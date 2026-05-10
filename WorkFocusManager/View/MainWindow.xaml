@@ -6,11 +6,15 @@
         xmlns:local="clr-namespace:WorkFocusManager" 
         xmlns:viewmodels="clr-namespace:WorkFocusManager.ViewModels"
         xmlns:converters="clr-namespace:WorkFocusManager.Converters"
+        xmlns:gif="http://wpfanimatedgif.codeplex.com"
+        xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
         mc:Ignorable="d"
-        Height="500"
-        Width="1200"
+        Width="{Binding IsShowDetailView, Converter={StaticResource DetailWidthConverter}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+        Height="{Binding IsShowDetailView, Converter={StaticResource DetailHeightConverter}, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
         Title="WorkFocusManager"
-        WindowStyle="SingleBorderWindow">
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent">
     <Window.DataContext>
         <viewmodels:MainWindowViewModel />
     </Window.DataContext>
@@ -18,141 +22,363 @@
         <converters:ProgressArcConverter x:Key="ProgressArcConverter"/>
     </Window.Resources>
     <DockPanel>
-        <Grid DockPanel.Dock="Left">
-            <Grid.Background>
-                <ImageBrush ImageSource="pack://application:,,,/Resources/background.jpg"
-                Stretch="UniformToFill"
-                Opacity="0.7"/>
-            </Grid.Background>
+        <StackPanel HorizontalAlignment="Center">
 
-            <Border Background="#40FFFFFF"/>
+            <!-- 말풍선 -->
+            <Border Background="#F2F2F2"
+                    CornerRadius="20"
+                    Padding="18,8"
+                    Margin="0,10,0,10">
+                <TextBlock Text="{Binding StatusText}"
+                   FontWeight="SemiBold"/>
+            </Border>
 
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
+            <!-- 캐릭터 이미지 -->
+            <Image Width="200"
+                   Height="180"
+                   Stretch="Uniform"
+                   gif:ImageBehavior.AnimatedSource="/Resources/CatImage.gif"/>
 
-                <Viewbox Stretch="Uniform">
-                    <Canvas Width="600" Height="600">
+            <!-- 이름 -->
+            <TextBlock Text="test"
+               FontWeight="Bold"
+               Foreground="White"
+               FontSize="18"
+               HorizontalAlignment="Center"/>
 
-                        <!-- 배경 원 -->
-                        <Ellipse Canvas.Left="50"
-                                 Canvas.Top="50"
-                                 Width="500"
-                                 Height="500"
-                                 Opacity="0.9"
-                                 Stroke="Gray"
-                                 StrokeThickness="10"
-                                 Fill="#20FFFFFF"/>
 
-                        <!-- 진행 원호 -->
-                        <Path Data="{Binding ProgressAngle, Converter={StaticResource ProgressArcConverter}}"
-                              Stroke="White"
-                              Opacity="0.7"
-                              StrokeThickness="10"
-                              StrokeStartLineCap="Round"
-                              StrokeEndLineCap="Round"/>
+            <StackPanel Orientation="Horizontal">
+                <!-- 타이머 / Start - Stop 버튼 -->
+                <Grid>
+                    <Button Height="50"
+                            mah:VisibilityHelper.IsHidden="{Binding IsRunning}"
+                            Command="{Binding ControlTimercommand}">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="Gray"
+                                        CornerRadius="18"
+                                        Padding="14,8"
+                                        Margin="10,10,10,0">
 
-                        <!-- 중앙 시간 -->
-                        <TextBlock Text="{Binding TimerText}"
-                                   Width="600"
-                                   Height="600"
-                                   FontFamily="나눔바른고딕"
-                                   TextAlignment="Center"
+                                    <ContentPresenter HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"/>
+                                </Border>
+                            </ControlTemplate>
+                        </Button.Template>
+                        <Button.Content>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="3*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE768;"
+                                           VerticalAlignment="Center"
+                                           Foreground="White"
+                                           FontSize="20"
+                                           FontWeight="Bold"/>
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding TimerText}"
+                                           VerticalAlignment="Bottom"
+                                           FontSize="20"
+                                           FontWeight="Bold"
+                                           Margin="10,0,0,0"/>
+                            </Grid>
+                        </Button.Content>
+                    </Button>
+                    <Button Height="50"
+                            mah:VisibilityHelper.IsVisible="{Binding IsRunning}"
+                            Command="{Binding ControlTimercommand}" Cursor="Hand">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="#E8B7B2"
+                                        CornerRadius="18"
+                                        Padding="14,8"
+                                        Margin="10,10,10,0">
+
+                                    <ContentPresenter HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"/>
+                                </Border>
+                            </ControlTemplate>
+                        </Button.Template>
+                        <Button.Content>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="3*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xEDB4;"
+                                           VerticalAlignment="Center"
+                                           Foreground="Red"
+                                           FontSize="20"
+                                           FontWeight="Bold"/>
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding TimerText}"
+                                           VerticalAlignment="Bottom"
+                                           FontSize="20"
+                                           FontWeight="Bold"
+                                           Margin="10,0,0,0"/>
+                            </Grid>
+                        </Button.Content>
+                    </Button>
+                </Grid>
+
+
+                <Button Command="{Binding ShowDetailViewcommand}">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="Gray"
+                                    CornerRadius="15"
+                                    Padding="10,8"
+                                    Margin="0,10,10,0">
+                                <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Button.Template>
+                    <Button.Content>
+                        <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE712;"
                                    VerticalAlignment="Center"
-                                   FontSize="80"
                                    Foreground="White"
-                                   FontWeight="Regular"
-                                   Padding="0,240,0,0"/>
-                    </Canvas>
-                </Viewbox>
+                                   FontSize="20"
+                                   FontWeight="Light"/>
+                    </Button.Content>
+                </Button>
+            </StackPanel>
+        </StackPanel>
 
-                <StackPanel Grid.Row="1"
-                            Orientation="Horizontal"
-                            HorizontalAlignment="Center"
-                            Margin="0,0,0,40">
-                    <Button Content="시작"
-                            Command="{Binding StartTimercommand}"
-                            Foreground="White"
-                            Opacity="0.8"
-                            Width="120"
-                            Height="45"
-                            Margin="8"/>
+        <Grid mah:VisibilityHelper.IsVisible="{Binding IsShowDetailView}"
+              Margin="20,0,0,0">
+            <TabControl Background="White"
+                        TabStripPlacement="Left">
+                <TabControl.Resources>
 
-                    <Button Content="정지"
-                            Command="{Binding StopTimercommand}"
-                            Foreground="White"
-                            Opacity="0.8"
-                            Width="120"
-                            Height="45"
-                            Margin="8"/>
+                    <Style TargetType="TabItem">
+                        <Setter Property="Background" Value="#2D2D30"/>
+                        <Setter Property="Foreground" Value="White"/>
 
-                    <Button Content="리셋"
-                            Command="{Binding ResetTimercommand}"
-                            Foreground="White"
-                            Opacity="0.8"
-                            Width="120"
-                            Height="45"
-                            Margin="8"/>
-                </StackPanel>
-            </Grid>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="TabItem">
+
+                                    <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="10"
+                                Margin="5"
+                                Padding="15,10">
+
+                                        <ContentPresenter
+                                ContentSource="Header"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"/>
+                                    </Border>
+
+                                    <ControlTemplate.Triggers>
+
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter TargetName="Bd"
+                                                    Property="Background"
+                                                    Value="#E8B7B2"/>
+                                        </Trigger>
+
+                                    </ControlTemplate.Triggers>
+
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+
+                </TabControl.Resources>
+
+                <TabItem Header="설정">
+                    <DockPanel Background="White">
+                        <Grid Margin="30">
+                            <Grid.Resources>
+                                <Style x:Key="LabelStyle" TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="Black"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                </Style>
+
+                                <Style x:Key="RoundTextBoxStyle" TargetType="TextBox">
+                                    <Setter Property="Height" Value="38"/>
+                                    <Setter Property="Padding" Value="12,6"/>
+                                    <Setter Property="Foreground" Value="Black"/>
+                                    <Setter Property="Background" Value="#F4F4F4"/>
+                                    <Setter Property="BorderBrush" Value="#DDD"/>
+                                    <Setter Property="BorderThickness" Value="1"/>
+                                    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                                    <Setter Property="VerticalContentAlignment" Value="Center"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="TextBox">
+                                                <Border Background="{TemplateBinding Background}"
+                                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                                        CornerRadius="15">
+                                                    <ScrollViewer x:Name="PART_ContentHost"
+                                          Margin="8,0"/>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </Grid.Resources>
+
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="45"/>
+                                <RowDefinition Height="45"/>
+                                <RowDefinition Height="45"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0"
+                                       Grid.Column="0"
+                                       Text="현재 상태"
+                                       Style="{StaticResource LabelStyle}"/>
+
+                            <TextBox Grid.Row="0"
+                                     Grid.Column="1"
+                                     Text="{Binding StatusText}"
+                                     Style="{StaticResource RoundTextBoxStyle}"/>
+
+                            <TextBlock Grid.Row="1"
+                                       Grid.Column="0"
+                                       Text="이름"
+                                       Style="{StaticResource LabelStyle}"/>
+
+                            <TextBox Grid.Row="1"
+                                     Grid.Column="1"
+                                     Text="{Binding Name}"
+                                     Style="{StaticResource RoundTextBoxStyle}"/>
+
+                            <TextBlock Grid.Row="2"
+                                       Grid.Column="0"
+                                       Text="시간"
+                                       Style="{StaticResource LabelStyle}"/>
+
+                            <TextBox Grid.Row="2"
+                                     Grid.Column="1"
+                                     Text="{Binding TimeText}"
+                                     Style="{StaticResource RoundTextBoxStyle}"/>
+                        </Grid>
+
+
+                    </DockPanel>
+                </TabItem>
+                <TabItem Header="프로세스">
+                    <Grid Background="White">
+                        <TreeView ItemsSource="{Binding ProcessGroupModels}"
+          Background="Transparent"
+          BorderThickness="0">
+
+                            <!-- 앱 / 백그라운드 -->
+                            <TreeView.ItemTemplate>
+                                <HierarchicalDataTemplate ItemsSource="{Binding Items}">
+
+                                    <!-- 카테고리 -->
+                                    <Border Background="#EFEFEF"
+                    Padding="8"
+                    Margin="0,5,0,5"
+                    CornerRadius="8">
+
+                                        <StackPanel Orientation="Horizontal">
+
+                                            <TextBlock Text="{Binding CategoryName}"
+                               FontWeight="Bold"
+                               FontSize="15"
+                               Foreground="Black"/>
+
+                                            <TextBlock Text="{Binding Count, StringFormat= ({0})}"
+                               Margin="5,0,0,0"
+                               Foreground="Gray"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- 프로세스 그룹 -->
+                                    <HierarchicalDataTemplate.ItemTemplate>
+                                        <HierarchicalDataTemplate ItemsSource="{Binding Items}">
+
+                                            <Grid Height="36">
+
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="30"/>
+                                                    <ColumnDefinition Width="200"/>
+                                                    <ColumnDefinition Width="100"/>
+                                                    <ColumnDefinition Width="100"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <Image Grid.Column="0"
+                                                       Width="18"
+                                                       Height="18"
+                                                       Source="{Binding ProcessIcon}"
+                                                       Margin="5,0"/>
+
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{Binding ProcessName}"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="Black"/>
+
+                                                <TextBlock Grid.Column="2"
+                                                           Text="{Binding Count, StringFormat={}{0}개}"
+                                                           HorizontalAlignment="Right"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="Gray"/>
+                                                <TextBlock Grid.Column="3"
+                                                           Text="{Binding TotalMemorySize}"
+                                                           HorizontalAlignment="Right"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="Gray"/>
+                                            </Grid>
+
+                                            <!-- 실제 프로세스 -->
+                                            <HierarchicalDataTemplate.ItemTemplate>
+                                                <DataTemplate>
+
+                                                    <Grid Height="28"
+                                                          Margin="25,0,0,0">
+
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="80"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="100"/>
+                                                        </Grid.ColumnDefinitions>
+
+                                                        <TextBlock Grid.Column="0"
+                                                                   Text="{Binding Id}"
+                                                                   Foreground="Gray"
+                                                                   VerticalAlignment="Center"/>
+
+                                                        <TextBlock Grid.Column="1"
+                                                                   Text="{Binding ProcessName}"
+                                                                   Foreground="Black"
+                                                                   VerticalAlignment="Center"/>
+
+                                                        <TextBlock Grid.Column="2"
+                                                                   Text="{Binding UsingMemorySize}"
+                                                                   Foreground="Gray"
+                                                                   HorizontalAlignment="Right"
+                                                                   VerticalAlignment="Center"/>
+                                                    </Grid>
+
+                                                </DataTemplate>
+                                            </HierarchicalDataTemplate.ItemTemplate>
+
+                                        </HierarchicalDataTemplate>
+                                    </HierarchicalDataTemplate.ItemTemplate>
+
+                                </HierarchicalDataTemplate>
+                            </TreeView.ItemTemplate>
+
+                        </TreeView>
+                    </Grid>
+                </TabItem>
+            </TabControl>
         </Grid>
-
-        <DataGrid ItemsSource="{Binding ProcessList}"
-                   AutoGenerateColumns="False">
-            <DataGrid.Columns>
-                <DataGridTemplateColumn Width="0.5*">
-                    <DataGridTemplateColumn.Header>
-                        <TextBox Text="" IsHitTestVisible="False"/>
-                    </DataGridTemplateColumn.Header>
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <Viewbox Stretch="UniformToFill">
-                                <Image Source="{Binding ProcessIcon}"
-       Width="20"
-       Height="20"
-       Margin="0,0,10,0"/>    
-                            </Viewbox>
-                            
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-                <DataGridTemplateColumn Width="*">
-                    <DataGridTemplateColumn.Header>
-                        <TextBox Text="ProcessID" IsHitTestVisible="False"/>
-                    </DataGridTemplateColumn.Header>
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding Id}"
-                                       Foreground="Black"/>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-                <DataGridTemplateColumn Width="3*">
-                    <DataGridTemplateColumn.Header>
-                        <TextBox Text="ProcessName" IsHitTestVisible="False"/>
-                    </DataGridTemplateColumn.Header>
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding ProcessName}"
-                                       Foreground="Black"/>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-                <DataGridTemplateColumn Width="*">
-                    <DataGridTemplateColumn.Header>
-                        <TextBox Text="UsingMemorySize" IsHitTestVisible="False"/>
-                    </DataGridTemplateColumn.Header>
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding UsingMemorySize}"
-                                       Foreground="Black"/>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-            </DataGrid.Columns>
-        </DataGrid>
-        
     </DockPanel>
 </Window>

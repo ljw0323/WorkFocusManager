@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Drawing;
 using System.Text;
 using System.Windows;
 using System.Windows.Input;
@@ -9,6 +10,7 @@ using System.Windows.Threading;
 using Utility;
 using WorkFocusManager.Models;
 using WorkFocusManager.Utility;
+using WpfAnimatedGif;
 
 namespace WorkFocusManager.ViewModels
 {
@@ -16,7 +18,7 @@ namespace WorkFocusManager.ViewModels
     {
         private readonly DispatcherTimer timer;
         private TimeSpan totalTime;
-        private bool isRunning;
+        
 
         private TimeSpan remainingTime;
         public TimeSpan RemainingTime
@@ -34,10 +36,18 @@ namespace WorkFocusManager.ViewModels
             }
         }
 
+        private bool isRunning;
         public bool IsRunning
         {
             get => isRunning;
             set => Set(ref isRunning, value);
+        }
+
+        private bool isShowDetailView;
+        public bool IsShowDetailView
+        {
+            get => isShowDetailView;
+            set => Set(ref isShowDetailView, value);
         }
 
         private double progressAngle;
@@ -54,11 +64,11 @@ namespace WorkFocusManager.ViewModels
             set => Set(ref timerText, value);
         }
 
-        private List<ProcessModel> processList;
-        public List<ProcessModel> ProcessList
+        private List<ProcessCategoryGroupModel> processGroupModels;
+        public List<ProcessCategoryGroupModel> ProcessGroupModels
         {
-            get => processList;
-            set => Set(ref processList, value);
+            get => processGroupModels;
+            set => Set(ref processGroupModels, value);
         }
 
         public MainWindowViewModel()
@@ -70,7 +80,7 @@ namespace WorkFocusManager.ViewModels
             timer.Interval = TimeSpan.FromSeconds(1);
             timer.Tick += Timer_Tick;
 
-            ProcessList = ProcessStatusManager.GetProcessList();
+            ProcessGroupModels = ProcessStatusManager.GetProcessCategoryGroupList();
         }
 
         private void Timer_Tick(object sender, EventArgs e)
@@ -91,26 +101,24 @@ namespace WorkFocusManager.ViewModels
                 ProgressAngle = RemainingTime.TotalSeconds / totalTime.TotalSeconds * 359.999;
         }
 
-        private ICommand startTimercommand;
-        public ICommand StartTimercommand => startTimercommand ?? (startTimercommand = new RelayCommand(StartTimerAction));
+        private ICommand controlTimercommand;
+        public ICommand ControlTimercommand => controlTimercommand ?? (controlTimercommand = new RelayCommand(ControlTimerAction));
 
-        private void StartTimerAction()
+        private void ControlTimerAction()
         {
-            if (remainingTime.TotalSeconds <= 0)
-                RemainingTime = totalTime;
+            if (!IsRunning)
+            {
+                if (remainingTime.TotalSeconds <= 0)
+                    RemainingTime = totalTime;
 
-
-            timer.Start();
-            IsRunning = true;
-        }
-
-        private ICommand stopTimercommand;
-        public ICommand StopTimercommand => stopTimercommand ?? (stopTimercommand = new RelayCommand(StopTimerAction));
-
-        private void StopTimerAction()
-        {
-            timer.Stop();
-            IsRunning = false;
+                timer.Start();
+                IsRunning = true;
+            }
+            else
+            {
+                timer.Stop();
+                IsRunning = false;
+            }
         }
 
         private ICommand resetTimercommand;
@@ -122,6 +130,14 @@ namespace WorkFocusManager.ViewModels
             IsRunning = false;
             RemainingTime = totalTime;
             OnPropertyChanged(nameof(TimerText));
+        }
+
+        private ICommand showDetailViewcommand;
+        public ICommand ShowDetailViewcommand => showDetailViewcommand ?? (showDetailViewcommand = new RelayCommand(ShowDetailViewAction));
+
+        private void ShowDetailViewAction()
+        {
+            IsShowDetailView = !IsShowDetailView;
         }
     }
 }
