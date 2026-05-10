@@ -19,6 +19,8 @@ namespace WorkFocusManager.Models
         public long UsingMemoryBytes { get; set; }
         public string CategoryName { get; set; }
 
+        public bool IsBlocked { get; set; }
+
         public string UsingMemorySize =>
             $"{UsingMemoryBytes / 1024 / 1024} MB";
     }
@@ -28,6 +30,7 @@ namespace WorkFocusManager.Models
         public string ProcessName { get; set; }
         public int Count { get; set; }
         public BitmapSource ProcessIcon { get; set; }
+        public bool IsBlocked { get; set; }
         public long TotalMemoryBytes { get; set; }
 
         public string TotalMemorySize =>
