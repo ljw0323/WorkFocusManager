@@ -34,7 +34,7 @@ namespace WorkFocusManager.Utility
                                 .OrderBy(x => x.Id)
                                 .ToList()
                         })
-                        .OrderBy(x => x.ProcessName)
+                        .OrderByDescending(x => x.TotalMemoryBytes)
                         .ToList()
                 })
                 .OrderBy(x => x.CategoryName == "앱" ? 0 : 1)

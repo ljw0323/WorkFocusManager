@@ -30,7 +30,8 @@
                     Padding="18,8"
                     Margin="0,10,0,10">
                 <TextBlock Text="{Binding StatusText}"
-                   FontWeight="SemiBold"/>
+                           FontWeight="SemiBold"
+                           HorizontalAlignment="Center"/>
             </Border>
 
             <!-- 캐릭터 이미지 -->
@@ -40,7 +41,7 @@
                    gif:ImageBehavior.AnimatedSource="/Resources/CatImage.gif"/>
 
             <!-- 이름 -->
-            <TextBlock Text="test"
+            <TextBlock Text="{Binding Name}"
                FontWeight="Bold"
                Foreground="White"
                FontSize="18"
@@ -218,12 +219,53 @@
                                                         BorderThickness="{TemplateBinding BorderThickness}"
                                                         CornerRadius="15">
                                                     <ScrollViewer x:Name="PART_ContentHost"
-                                          Margin="8,0"/>
+                                                                  Margin="8,0"/>
                                                 </Border>
                                             </ControlTemplate>
                                         </Setter.Value>
                                     </Setter>
                                 </Style>
+
+                                <Style x:Key="RoundComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource MaterialDesignOutlinedComboBox}">
+                                    <Setter Property="Width" Value="220"/>
+                                    <Setter Property="Foreground" Value="Black"/>
+                                    <Setter Property="Background" Value="#F4F4F4"/>
+                                    <Setter Property="BorderBrush" Value="#DDDDDD"/>
+                                    <Setter Property="BorderThickness" Value="1"/>
+                                    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                                    <Setter Property="VerticalContentAlignment" Value="Center"/>
+                                </Style>
+
+                                <Style x:Key="RoundComboBoxItemStyle"
+                                       TargetType="ComboBoxItem">
+                                    <Setter Property="Foreground" Value="Black"/>
+                                    <Setter Property="Background" Value="White"/>
+                                    <Setter Property="Height" Value="32"/>
+                                    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                                    <Setter Property="VerticalContentAlignment" Value="Center"/>
+
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ComboBoxItem">
+                                                <Border x:Name="Bd"
+                                                        Background="{TemplateBinding Background}"
+                                                        Padding="10,4">
+                                                    <ContentPresenter HorizontalAlignment="Center"
+                                                                      VerticalAlignment="Center"/>
+                                                </Border>
+
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsHighlighted" Value="True">
+                                                        <Setter TargetName="Bd"
+                                                                Property="Background"
+                                                                Value="#E8B7B2"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+
                             </Grid.Resources>
 
                             <Grid.ColumnDefinitions>
@@ -259,13 +301,38 @@
 
                             <TextBlock Grid.Row="2"
                                        Grid.Column="0"
-                                       Text="시간"
+                                       Text="시간 설정"
                                        Style="{StaticResource LabelStyle}"/>
 
-                            <TextBox Grid.Row="2"
-                                     Grid.Column="1"
-                                     Text="{Binding TimeText}"
-                                     Style="{StaticResource RoundTextBoxStyle}"/>
+                            <StackPanel Orientation="Horizontal"
+                                        HorizontalAlignment="Center"
+                                        Grid.Row="2"
+                                        Grid.Column="1">
+                                <ComboBox ItemsSource="{Binding Hours}"
+                                          SelectedItem="{Binding SelectedHour}"
+                                          Style="{StaticResource RoundComboBoxStyle}"
+                                          ItemContainerStyle="{StaticResource RoundComboBoxItemStyle}"/>
+                                <TextBlock Text=":"
+                                           Margin="5,0"
+                                           VerticalAlignment="Center"
+                                           Style="{StaticResource LabelStyle}"/>
+
+                                <ComboBox ItemsSource="{Binding Minutes}"
+                                          SelectedItem="{Binding SelectedMinute}"
+                                          Style="{StaticResource RoundComboBoxStyle}"
+                                          ItemContainerStyle="{StaticResource RoundComboBoxItemStyle}"/>
+
+                                <TextBlock Text=":"
+                                           Margin="5,0"
+                                           VerticalAlignment="Center"
+                                           Style="{StaticResource LabelStyle}"/>
+
+                                <ComboBox ItemsSource="{Binding Seconds}"
+                                          SelectedItem="{Binding SelectedSecond}"
+                                          Style="{StaticResource RoundComboBoxStyle}"
+                                          ItemContainerStyle="{StaticResource RoundComboBoxItemStyle}"/>
+
+                            </StackPanel>
                         </Grid>
 
 
@@ -274,8 +341,8 @@
                 <TabItem Header="프로세스">
                     <Grid Background="White">
                         <TreeView ItemsSource="{Binding ProcessGroupModels}"
-          Background="Transparent"
-          BorderThickness="0">
+                                  Background="Transparent"
+                                  BorderThickness="0">
 
                             <!-- 앱 / 백그라운드 -->
                             <TreeView.ItemTemplate>
@@ -283,20 +350,20 @@
 
                                     <!-- 카테고리 -->
                                     <Border Background="#EFEFEF"
-                    Padding="8"
-                    Margin="0,5,0,5"
-                    CornerRadius="8">
+                                            Padding="8"
+                                            Margin="0,5,0,5"
+                                            CornerRadius="8">
 
                                         <StackPanel Orientation="Horizontal">
 
                                             <TextBlock Text="{Binding CategoryName}"
-                               FontWeight="Bold"
-                               FontSize="15"
-                               Foreground="Black"/>
+                                                       FontWeight="Bold"
+                                                       FontSize="15"
+                                                       Foreground="Black"/>
 
                                             <TextBlock Text="{Binding Count, StringFormat= ({0})}"
-                               Margin="5,0,0,0"
-                               Foreground="Gray"/>
+                                                       Margin="5,0,0,0"
+                                                       Foreground="Gray"/>
                                         </StackPanel>
                                     </Border>
 
@@ -371,10 +438,8 @@
 
                                         </HierarchicalDataTemplate>
                                     </HierarchicalDataTemplate.ItemTemplate>
-
                                 </HierarchicalDataTemplate>
                             </TreeView.ItemTemplate>
-
                         </TreeView>
                     </Grid>
                 </TabItem>

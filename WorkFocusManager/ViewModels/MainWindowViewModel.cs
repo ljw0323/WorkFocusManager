@@ -18,7 +18,7 @@ namespace WorkFocusManager.ViewModels
     {
         private readonly DispatcherTimer timer;
         private TimeSpan totalTime;
-        
+
 
         private TimeSpan remainingTime;
         public TimeSpan RemainingTime
@@ -28,11 +28,6 @@ namespace WorkFocusManager.ViewModels
             {
                 Set(ref remainingTime, value);
                 TimerText = value.ToString(@"hh\:mm\:ss");
-
-                if (value.TotalSeconds <= 0)
-                    ProgressAngle = 360;
-                else
-                    ProgressAngle = value.TotalSeconds / totalTime.TotalSeconds * 359.999;
             }
         }
 
@@ -50,18 +45,62 @@ namespace WorkFocusManager.ViewModels
             set => Set(ref isShowDetailView, value);
         }
 
-        private double progressAngle;
-        public double ProgressAngle
-        {
-            get => progressAngle;
-            set => Set(ref progressAngle, value);
-        }
-
         private string timerText;
         public string TimerText
         {
             get => timerText;
             set => Set(ref timerText, value);
+        }
+
+        public ObservableCollection<int> Hours { get; set; }
+        public ObservableCollection<int> Minutes { get; set; }
+        public ObservableCollection<int> Seconds { get; set; }
+
+        private int selectedHour;
+        public int SelectedHour
+        {
+            get => selectedHour;
+            set
+            {
+                Set(ref selectedHour, value);
+                UpdateSelectedTime();
+            }
+        }
+
+        private int selectedMinute;
+        public int SelectedMinute
+        {
+            get => selectedMinute;
+            set
+            {
+                Set(ref selectedMinute, value);
+                UpdateSelectedTime();
+            }
+        }
+
+        private int selectedSecond;
+        public int SelectedSecond
+        {
+            get => selectedSecond;
+            set
+            {
+                Set(ref selectedSecond, value);
+                UpdateSelectedTime();
+            }
+        }
+
+        private string statusText;
+        public string StatusText
+        {
+            get => statusText;
+            set => Set(ref statusText, value);
+        }
+
+        private string name;
+        public string Name
+        {
+            get => name;
+            set => Set(ref name, value);
         }
 
         private List<ProcessCategoryGroupModel> processGroupModels;
@@ -81,8 +120,35 @@ namespace WorkFocusManager.ViewModels
             timer.Tick += Timer_Tick;
 
             ProcessGroupModels = ProcessStatusManager.GetProcessCategoryGroupList();
+
+            Hours = new ObservableCollection<int>(
+                Enumerable.Range(0, 24));
+
+            Minutes = new ObservableCollection<int>(
+                Enumerable.Range(0, 60));
+
+            Seconds = new ObservableCollection<int>(
+                Enumerable.Range(0, 60));
+
+            SelectedHour = 0;
+            SelectedMinute = 1;
+            SelectedSecond = 0;
+
+            UpdateSelectedTime();
         }
 
+        private void UpdateSelectedTime()
+        {
+            totalTime = new TimeSpan(
+                SelectedHour,
+                SelectedMinute,
+                SelectedSecond);
+
+            if (!IsRunning)
+                RemainingTime = totalTime;
+        }
+
+        private long timerTick;
         private void Timer_Tick(object sender, EventArgs e)
         {
             if (RemainingTime.TotalSeconds <= 0)
@@ -95,10 +161,10 @@ namespace WorkFocusManager.ViewModels
 
             RemainingTime = RemainingTime.Subtract(TimeSpan.FromSeconds(1));
 
-            if (totalTime.TotalSeconds <= 0)
-                ProgressAngle = 0;
-            else
-                ProgressAngle = RemainingTime.TotalSeconds / totalTime.TotalSeconds * 359.999;
+            if (timerTick % 5 == 0)
+                ProcessGroupModels = ProcessStatusManager.GetProcessCategoryGroupList();
+
+            timerTick = timerTick > 1000000 ? 0 : timerTick + 1;
         }
 
         private ICommand controlTimercommand;
