@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Text;
 using System.Windows;
 using System.Windows.Input;
@@ -12,15 +13,18 @@ using WorkFocusManager.Configs;
 using WorkFocusManager.Models;
 using WorkFocusManager.Utility;
 using WpfAnimatedGif;
+using Newtonsoft.Json;
 
 namespace WorkFocusManager.ViewModels
 {
     public class MainWindowViewModel : ViewModelBase
     {
         private readonly DispatcherTimer timer;
-        private TimeSpan totalTime;
+
 
         public SystemConfig SystemConfig => SystemConfig.Instance;
+
+        private TimeSpan totalTime;
 
         private TimeSpan remainingTime;
         public TimeSpan RemainingTime
@@ -91,20 +95,6 @@ namespace WorkFocusManager.ViewModels
             }
         }
 
-        private string statusText;
-        public string StatusText
-        {
-            get => statusText;
-            set => Set(ref statusText, value);
-        }
-
-        private string name;
-        public string Name
-        {
-            get => name;
-            set => Set(ref name, value);
-        }
-
         private List<ProcessCategoryGroupModel> processGroupModels;
         public List<ProcessCategoryGroupModel> ProcessGroupModels
         {
@@ -114,6 +104,7 @@ namespace WorkFocusManager.ViewModels
 
         public MainWindowViewModel()
         {
+
             totalTime = TimeSpan.FromMinutes(1);
             RemainingTime = totalTime;
 
@@ -289,6 +280,14 @@ namespace WorkFocusManager.ViewModels
                 if (index != -1)
                     SystemConfig.ProcessModelBlackList.RemoveAt(index);
             }
+        }
+
+        private ICommand saveConfigCommand;
+        public ICommand SaveConfigCommand => saveConfigCommand ?? (saveConfigCommand = new RelayCommand(SaveConfigAction));
+
+        private void SaveConfigAction()
+        {
+            SystemConfig.Save();
         }
     }
 }
