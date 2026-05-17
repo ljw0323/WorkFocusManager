@@ -58,6 +58,13 @@ namespace WorkFocusManager.ViewModels
             set => Set(ref timerText, value);
         }
 
+        private DateTime? selectedDate;
+        public DateTime? SelectedDate
+        {
+            get => selectedDate;
+            set => Set(ref selectedDate, value);
+        }
+
         public ObservableCollection<int> Hours { get; set; }
         public ObservableCollection<int> Minutes { get; set; }
         public ObservableCollection<int> Seconds { get; set; }
@@ -95,6 +102,15 @@ namespace WorkFocusManager.ViewModels
             }
         }
 
+        private TimerProcessingLogModel CurrnetProcessingModel;
+
+        private List<TimerProcessingLogModel> timerProcessingLogModels;
+        public List<TimerProcessingLogModel> TimerProcessingLogModels
+        {
+            get => timerProcessingLogModels;
+            set => Set(ref timerProcessingLogModels, value);
+        }
+
         private List<ProcessCategoryGroupModel> processGroupModels;
         public List<ProcessCategoryGroupModel> ProcessGroupModels
         {
@@ -130,8 +146,8 @@ namespace WorkFocusManager.ViewModels
             UpdateSelectedTime();
 
             if (SystemConfig.ProcessGroupModelBlackList == null)
-                SystemConfig.ProcessGroupModelBlackList =  new List<ProcessGroupModel>();
-            if(SystemConfig.ProcessModelBlackList == null)
+                SystemConfig.ProcessGroupModelBlackList = new List<ProcessGroupModel>();
+            if (SystemConfig.ProcessModelBlackList == null)
                 SystemConfig.ProcessModelBlackList = new List<ProcessModel>();
         }
 
@@ -187,11 +203,22 @@ namespace WorkFocusManager.ViewModels
 
                 timer.Start();
                 IsRunning = true;
+
+
+                var model = new TimerProcessingLogModel();
+                model.Title = SystemConfig.StatusText;
+                model.LoggingDate = DateTime.Now;
+                model.StartTime = DateTime.Now;
+
+                CurrnetProcessingModel = model;
             }
             else
             {
                 timer.Stop();
                 IsRunning = false;
+
+                CurrnetProcessingModel.EndTime = DateTime.Now;
+                CurrnetProcessingModel = null;
             }
         }
 
@@ -224,7 +251,7 @@ namespace WorkFocusManager.ViewModels
                 // 그룹 우클릭
                 var processName = processGroup.ProcessName;
 
-                foreach(var process in processGroup.Items)
+                foreach (var process in processGroup.Items)
                 {
                     process.IsBlocked = true;
                 }
@@ -234,9 +261,9 @@ namespace WorkFocusManager.ViewModels
 
                 var originProcess = ProcessGroupModels.Select(x => x.Items.FirstOrDefault(x => x.ProcessName == processName));
 
-                foreach(var item in originProcess)
+                foreach (var item in originProcess)
                 {
-                    if(item != null)
+                    if (item != null)
                         item.IsBlocked = true;
                 }
             }
@@ -265,7 +292,7 @@ namespace WorkFocusManager.ViewModels
 
                 var index = SystemConfig.ProcessGroupModelBlackList.IndexOf(existProcess.First());
 
-                if(index != -1)
+                if (index != -1)
                     SystemConfig.ProcessGroupModelBlackList.RemoveAt(index);
             }
             else if (parameter is ProcessModel process)

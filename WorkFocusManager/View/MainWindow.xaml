@@ -3,8 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:WorkFocusManager" 
+        xmlns:local="clr-namespace:WorkFocusManager"
         xmlns:viewmodels="clr-namespace:WorkFocusManager.ViewModels"
+        xmlns:controls="clr-namespace:WorkFocusManager.Controls"
         xmlns:converters="clr-namespace:WorkFocusManager.Converters"
         xmlns:gif="http://wpfanimatedgif.codeplex.com"
         xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
@@ -24,13 +25,14 @@
         <converters:BlackListBackgroundConverter x:Key="BlackListBackgroundConverter"/>
     </Window.Resources>
     <DockPanel>
-        <StackPanel HorizontalAlignment="Center">
-
+        <StackPanel HorizontalAlignment="Center" >
             <!-- 말풍선 -->
             <Border Background="White"
                     CornerRadius="20"
                     Padding="18,8"
-                    Margin="0,10,0,10">
+                    Margin="0,10,0,10"
+                    Width="200"
+                    HorizontalAlignment="Center">
                 <TextBlock Text="{Binding SystemConfig.StatusText}"
                            FontWeight="SemiBold"
                            HorizontalAlignment="Center"/>
@@ -51,9 +53,9 @@
                HorizontalAlignment="Center"/>
 
 
-            <StackPanel Orientation="Horizontal">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                 <!-- 타이머 / Start - Stop 버튼 -->
-                <Grid>
+                <Grid >
                     <Button Height="50"
                             mah:VisibilityHelper.IsHidden="{Binding IsRunning}"
                             Command="{Binding ControlTimercommand}">
@@ -150,6 +152,12 @@
                     </Button.Content>
                 </Button>
             </StackPanel>
+
+            <!-- 달력 -->
+            <controls:Calendar DockPanel.Dock="Left" 
+                               Margin="0,15,0,0"
+                               mah:VisibilityHelper.IsVisible="{Binding IsShowDetailView}"
+                               SelectedDate="{Binding SelectedDate}"/>
         </StackPanel>
 
         <Grid mah:VisibilityHelper.IsVisible="{Binding IsShowDetailView}"
@@ -311,40 +319,54 @@
                                        Text="시간 설정"
                                        Style="{StaticResource LabelStyle}"/>
 
-                            <StackPanel Orientation="Horizontal"
-                                        HorizontalAlignment="Center"
-                                        Grid.Row="2"
-                                        Grid.Column="1">
-                                <ComboBox ItemsSource="{Binding Hours}"
-                                          SelectedItem="{Binding SelectedHour}"
-                                          Style="{StaticResource RoundComboBoxStyle}"
-                                          ItemContainerStyle="{StaticResource RoundComboBoxItemStyle}"/>
-                                <TextBlock Text=":"
-                                           Margin="5,0"
-                                           VerticalAlignment="Center"
-                                           Style="{StaticResource LabelStyle}"/>
 
-                                <ComboBox ItemsSource="{Binding Minutes}"
-                                          SelectedItem="{Binding SelectedMinute}"
-                                          Style="{StaticResource RoundComboBoxStyle}"
-                                          ItemContainerStyle="{StaticResource RoundComboBoxItemStyle}"/>
+                            <Viewbox Grid.Row="2"
+                                     Grid.Column="1">
+                                <StackPanel Orientation="Horizontal"
+                                            HorizontalAlignment="Center">
+                                    <ComboBox ItemsSource="{Binding Hours}"
+                                              SelectedItem="{Binding SelectedHour}"
+                                              Style="{StaticResource RoundComboBoxStyle}"
+                                              ItemContainerStyle="{StaticResource RoundComboBoxItemStyle}"
+                                              FontSize="18"
+                                              FontWeight="Bold"/>
+                                    <TextBlock Text=":"
+                                               Margin="5,0"
+                                               VerticalAlignment="Center"
+                                               Style="{StaticResource LabelStyle}"/>
 
-                                <TextBlock Text=":"
-                                           Margin="5,0"
-                                           VerticalAlignment="Center"
-                                           Style="{StaticResource LabelStyle}"/>
+                                    <ComboBox ItemsSource="{Binding Minutes}"
+                                              SelectedItem="{Binding SelectedMinute}"
+                                              Style="{StaticResource RoundComboBoxStyle}"
+                                              ItemContainerStyle="{StaticResource RoundComboBoxItemStyle}"
+                                              FontSize="18"
+                                              FontWeight="Bold"/>
 
-                                <ComboBox ItemsSource="{Binding Seconds}"
-                                          SelectedItem="{Binding SelectedSecond}"
-                                          Style="{StaticResource RoundComboBoxStyle}"
-                                          ItemContainerStyle="{StaticResource RoundComboBoxItemStyle}"/>
+                                    <TextBlock Text=":"
+                                               Margin="5,0"
+                                               VerticalAlignment="Center"
+                                               Style="{StaticResource LabelStyle}"/>
 
-                            </StackPanel>
+                                    <ComboBox ItemsSource="{Binding Seconds}"
+                                              SelectedItem="{Binding SelectedSecond}"
+                                              Style="{StaticResource RoundComboBoxStyle}"
+                                              ItemContainerStyle="{StaticResource RoundComboBoxItemStyle}"
+                                              FontSize="18"
+                                              FontWeight="Bold"/>
+
+                                </StackPanel>
+                            </Viewbox>
                         </Grid>
-
                     </DockPanel>
                 </TabItem>
-                <TabItem Header="프로세스">
+                <TabItem Header="사용 기록">
+                    <DockPanel Background="White">
+                        <ItemsControl ItemsSource="{Binding TimerProcessingLogModels}">
+                            
+                        </ItemsControl>
+                    </DockPanel>
+                </TabItem>
+                <TabItem Header="현재 프로세스">
                     <Grid Background="White">
                         <TreeView ItemsSource="{Binding ProcessGroupModels}"
                                   Background="Transparent"
