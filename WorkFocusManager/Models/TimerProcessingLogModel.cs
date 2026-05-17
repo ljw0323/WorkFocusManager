@@ -7,7 +7,7 @@ namespace WorkFocusManager.Models
 {
     public class TimerProcessingLogModel : ViewModelBase
     {
-        private int id;
+        private int id = 1;
         public int Id
         {
             get => id;

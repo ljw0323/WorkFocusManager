@@ -149,6 +149,8 @@ namespace WorkFocusManager.ViewModels
                 SystemConfig.ProcessGroupModelBlackList = new List<ProcessGroupModel>();
             if (SystemConfig.ProcessModelBlackList == null)
                 SystemConfig.ProcessModelBlackList = new List<ProcessModel>();
+
+            TimerProcessingLogModels = new List<TimerProcessingLogModel>();
         }
 
         private void UpdateSelectedTime()
@@ -170,6 +172,11 @@ namespace WorkFocusManager.ViewModels
                 RemainingTime = TimeSpan.Zero;
                 timer.Stop();
                 IsRunning = false;
+
+                CurrnetProcessingModel.EndTime = DateTime.Now;
+                TimerProcessingLogModels.Add(CurrnetProcessingModel);
+                CurrnetProcessingModel = null;
+
                 return;
             }
 
@@ -216,9 +223,6 @@ namespace WorkFocusManager.ViewModels
             {
                 timer.Stop();
                 IsRunning = false;
-
-                CurrnetProcessingModel.EndTime = DateTime.Now;
-                CurrnetProcessingModel = null;
             }
         }
 
@@ -230,6 +234,15 @@ namespace WorkFocusManager.ViewModels
             timer.Stop();
             IsRunning = false;
             RemainingTime = totalTime;
+
+            if(CurrnetProcessingModel != null)
+            {
+                CurrnetProcessingModel.EndTime = DateTime.Now;
+                TimerProcessingLogModels.Add(CurrnetProcessingModel);
+                CurrnetProcessingModel = null;
+            }
+            
+
             OnPropertyChanged(nameof(TimerText));
         }
 

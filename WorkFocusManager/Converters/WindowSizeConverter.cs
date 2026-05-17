@@ -10,7 +10,7 @@ namespace WorkFocusManager.Converters
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            return value is true ? 1200 : 220;
+            return value is true ? 1200 : 250;
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
