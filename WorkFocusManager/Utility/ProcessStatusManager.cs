@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Collections.Concurrent;
 using System.Windows.Interop;
 using System.Windows.Media.Imaging;
 using WorkFocusManager.Models;
@@ -11,6 +12,7 @@ namespace WorkFocusManager.Utility
     {
         private const string AppCategoryName = "\uC571";
         private const string BackgroundCategoryName = "\uBC31\uADF8\uB77C\uC6B4\uB4DC \uD504\uB85C\uC138\uC2A4";
+        private static readonly ConcurrentDictionary<string, BitmapSource?> IconCache = new();
 
         public static List<ProcessCategoryGroupModel> GetProcessCategoryGroupList()
         {
@@ -188,15 +190,15 @@ namespace WorkFocusManager.Utility
 
         private static ProcessModel CreateProcessModel(Process process)
         {
+            var hasMainWindow = process.MainWindowHandle != IntPtr.Zero;
+
             return new ProcessModel
             {
                 Id = process.Id,
                 ProcessName = process.ProcessName,
-                ProcessIcon = GetProcessIcon(process),
+                ProcessIcon = hasMainWindow ? GetProcessIcon(process) : null,
                 UsingMemoryBytes = GetWorkingSet(process),
-                CategoryName = process.MainWindowHandle != IntPtr.Zero
-                    ? AppCategoryName
-                    : BackgroundCategoryName
+                CategoryName = hasMainWindow? AppCategoryName: BackgroundCategoryName
             };
         }
 
@@ -221,10 +223,16 @@ namespace WorkFocusManager.Utility
                 if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
                     return null;
 
+                if (IconCache.TryGetValue(path, out var cachedIcon))
+                    return cachedIcon;
+
                 using var icon = Icon.ExtractAssociatedIcon(path);
 
                 if (icon == null)
+                {
+                    IconCache[path] = null;
                     return null;
+                }
 
                 var bitmapSource = Imaging.CreateBitmapSourceFromHIcon(
                     icon.Handle,
@@ -232,6 +240,7 @@ namespace WorkFocusManager.Utility
                     BitmapSizeOptions.FromWidthAndHeight(24, 24));
 
                 bitmapSource.Freeze();
+                IconCache[path] = bitmapSource;
 
                 return bitmapSource;
             }

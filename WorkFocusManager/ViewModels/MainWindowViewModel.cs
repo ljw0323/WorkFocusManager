@@ -31,6 +31,8 @@ namespace WorkFocusManager.ViewModels
         private int selectedSecond;
         private long timerTick;
         private bool isEnforcingBlacklist;
+        private bool isRefreshingProcessGroups;
+        private bool hasLoadedProcessGroups;
         private TimerProcessingLogModel? currentProcessingModel;
 
         private ObservableCollection<TimerProcessingLogModel> timerProcessingLogModelColleciton = new();
@@ -73,7 +75,7 @@ namespace WorkFocusManager.ViewModels
             UpdateSelectedTime();
             EnsureConfigCollections();
             LoadUsageRecords();
-            RefreshProcessGroups(ProcessStatusManager.GetProcessCategoryGroupList());
+            RefreshProcessGroupsAsync();
         }
 
         public SystemConfig SystemConfig => SystemConfig.Instance;
@@ -227,7 +229,7 @@ namespace WorkFocusManager.ViewModels
             RemainingTime = RemainingTime.Subtract(TimeSpan.FromSeconds(1));
             EnforceBlacklistAsync();
 
-            if (timerTick % ProcessRefreshIntervalSeconds == 0)
+            if (IsShowDetailView && timerTick % ProcessRefreshIntervalSeconds == 0)
                 RefreshProcessGroupsAsync();
 
             timerTick = timerTick > 1000000 ? 0 : timerTick + 1;
@@ -282,6 +284,9 @@ namespace WorkFocusManager.ViewModels
         private void ShowDetailViewAction()
         {
             IsShowDetailView = !IsShowDetailView;
+
+            if (IsShowDetailView)
+                RefreshProcessGroupsAsync();
         }
 
         private void AddBlacklistAction(object parameter)
@@ -437,11 +442,20 @@ namespace WorkFocusManager.ViewModels
         private void RefreshProcessGroups(List<ProcessCategoryGroupModel> processGroups)
         {
             ProcessGroupModels = processGroups;
+            hasLoadedProcessGroups = true;
             ApplyBlacklistState();
         }
 
         private void RefreshProcessGroupsAsync()
         {
+            if (IsRunning && hasLoadedProcessGroups)
+                return;
+
+            if (isRefreshingProcessGroups)
+                return;
+
+            isRefreshingProcessGroups = true;
+
             Task.Run(() =>
             {
                 var processGroups = ProcessStatusManager.GetProcessCategoryGroupList();
@@ -449,7 +463,18 @@ namespace WorkFocusManager.ViewModels
                 Application.Current.Dispatcher.Invoke(() =>
                 {
                     RefreshProcessGroups(processGroups);
+                    isRefreshingProcessGroups = false;
                 });
+            })
+            .ContinueWith(task =>
+            {
+                if (!task.IsCompletedSuccessfully)
+                {
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        isRefreshingProcessGroups = false;
+                    });
+                }
             });
         }
 

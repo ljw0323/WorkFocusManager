@@ -28,5 +28,10 @@ namespace WorkFocusManager
             if (e.ButtonState == MouseButtonState.Pressed)
                 DragMove();
         }
+
+        private void CloseButton_Click(object sender, RoutedEventArgs e)
+        {
+            Close();
+        }
     }
 }

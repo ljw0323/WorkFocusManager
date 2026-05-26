@@ -13,6 +13,7 @@
         Width="{Binding IsShowDetailView, Converter={StaticResource DetailWidthConverter}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
         Height="{Binding IsShowDetailView, Converter={StaticResource DetailHeightConverter}, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"
         Title="WorkFocusManager"
+        Icon="/Resources/AppIcon.ico"
         WindowStyle="None"
         AllowsTransparency="True"
         Topmost="True"
@@ -24,6 +25,7 @@
         <converters:ProgressArcConverter x:Key="ProgressArcConverter"/>
         <converters:BlackListBackgroundConverter x:Key="BlackListBackgroundConverter"/>
     </Window.Resources>
+    <Grid>
     <DockPanel>
         <StackPanel HorizontalAlignment="Center" >
             <!-- 말풍선 -->
@@ -788,7 +790,20 @@
                             </Grid>
                         </Border>
 
-                        <TreeView ItemsSource="{Binding ProcessGroupModels}" Background="Transparent" BorderThickness="0" Padding="14" HorizontalContentAlignment="Stretch">
+                        <TreeView ItemsSource="{Binding ProcessGroupModels}"
+                                  Background="Transparent"
+                                  BorderThickness="0"
+                                  Padding="14"
+                                  HorizontalContentAlignment="Stretch"
+                                  VirtualizingPanel.IsVirtualizing="True"
+                                  VirtualizingPanel.VirtualizationMode="Recycling"
+                                  ScrollViewer.CanContentScroll="True">
+                            <TreeView.Resources>
+                                <Style x:Key="ProcessGroupTreeViewItemStyle" TargetType="TreeViewItem">
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                    <Setter Property="IsExpanded" Value="False"/>
+                                </Style>
+                            </TreeView.Resources>
                             <TreeView.ItemContainerStyle>
                                 <Style TargetType="TreeViewItem">
                                     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
@@ -796,7 +811,7 @@
                                 </Style>
                             </TreeView.ItemContainerStyle>
                             <TreeView.ItemTemplate>
-                                <HierarchicalDataTemplate ItemsSource="{Binding Items}">
+                                <HierarchicalDataTemplate ItemsSource="{Binding Items}" ItemContainerStyle="{StaticResource ProcessGroupTreeViewItemStyle}">
                                     <Border Background="#2D2D30" Padding="12,8" Margin="0,8,0,6" CornerRadius="6" HorizontalAlignment="Stretch">
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="{Binding CategoryName}" FontWeight="Bold" FontSize="14" Foreground="White"/>
@@ -881,7 +896,14 @@
                             </Grid>
                         </Border>
 
-                        <TreeView ItemsSource="{Binding SystemConfig.ProcessGroupModelBlackList}" Background="Transparent" BorderThickness="0" Padding="14" HorizontalContentAlignment="Stretch">
+                        <TreeView ItemsSource="{Binding SystemConfig.ProcessGroupModelBlackList}"
+                                  Background="Transparent"
+                                  BorderThickness="0"
+                                  Padding="14"
+                                  HorizontalContentAlignment="Stretch"
+                                  VirtualizingPanel.IsVirtualizing="True"
+                                  VirtualizingPanel.VirtualizationMode="Recycling"
+                                  ScrollViewer.CanContentScroll="True">
                             <TreeView.ItemContainerStyle>
                                 <Style TargetType="TreeViewItem">
                                     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
@@ -947,4 +969,40 @@
             </TabControl>
         </Grid>
     </DockPanel>
+
+        <Button Width="34"
+                Height="34"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Margin="0,8,8,0"
+                Background="#CC2D2D30"
+                BorderBrush="#44FFFFFF"
+                BorderThickness="1"
+                Cursor="Hand"
+                Click="CloseButton_Click"
+                ToolTip="종료">
+            <Button.Template>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="CloseBorder"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="17">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="CloseBorder" Property="Background" Value="#E45C5C"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Button.Template>
+            <TextBlock FontFamily="Segoe MDL2 Assets"
+                       Text="&#xE711;"
+                       Foreground="White"
+                       FontSize="12"
+                       FontWeight="Bold"/>
+        </Button>
+    </Grid>
 </Window>
