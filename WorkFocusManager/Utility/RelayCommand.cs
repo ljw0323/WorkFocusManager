@@ -1,80 +1,53 @@
-﻿using System;
 using System.Windows.Input;
 
 namespace WorkFocusManager.Utility
 {
     public class RelayCommand : ICommand
     {
-        private readonly Action _execute;
+        private readonly Func<bool>? canExecute;
+        private readonly Action execute;
 
-        private readonly Func<bool> _canExecute;
-        private Func<object, Task> saveModel;
-        private ICommand enterCommand;
-        private Action<object> saveTowerLampAction;
-
-        public event EventHandler CanExecuteChanged;
-
-        public RelayCommand(Action execute)
-            : this(execute, null)
+        public RelayCommand(Action execute, Func<bool>? canExecute = null)
         {
+            this.execute = execute ?? throw new ArgumentNullException(nameof(execute));
+            this.canExecute = canExecute;
         }
 
-        public RelayCommand(Action execute, Func<bool> canExecute)
-        {
-            _execute = execute ?? throw new ArgumentNullException(nameof(execute));
-            _canExecute = canExecute;
-        }
+        public event EventHandler? CanExecuteChanged;
 
-        public RelayCommand(Func<object, Task> saveModel)
-        {
-            this.saveModel = saveModel;
-        }
+        public bool CanExecute(object? parameter)
+            => canExecute?.Invoke() ?? true;
 
-        public RelayCommand(ICommand enterCommand)
-        {
-            this.enterCommand = enterCommand;
-        }
+        public void Execute(object? parameter)
+            => execute();
 
-        public RelayCommand(Action<object> saveTowerLampAction)
-        {
-            this.saveTowerLampAction = saveTowerLampAction;
-        }
-
-        public bool CanExecute(object parameter) => _canExecute == null || _canExecute();
-
-        public void Execute(object parameter) => _execute();
-
-        public void OnCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+        public void OnCanExecuteChanged()
+            => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public class RelayCommand<T> : ICommand
     {
-        private readonly Action<T> _execute;
+        private readonly Func<T, bool>? canExecute;
+        private readonly Action<T> execute;
 
-        private readonly Func<T, bool> _canExecute;
-
-        public event EventHandler CanExecuteChanged;
-
-        public RelayCommand(Action<T> execute)
-            : this(execute, null)
+        public RelayCommand(Action<T> execute, Func<T, bool>? canExecute = null)
         {
+            this.execute = execute ?? throw new ArgumentNullException(nameof(execute));
+            this.canExecute = canExecute;
         }
 
-        public RelayCommand(Action<T> execute, Func<T, bool> canExecute)
+        public event EventHandler? CanExecuteChanged;
+
+        public bool CanExecute(object? parameter)
+            => parameter is T value && (canExecute?.Invoke(value) ?? true);
+
+        public void Execute(object? parameter)
         {
-            _execute = execute ?? throw new ArgumentNullException(nameof(execute));
-            _canExecute = canExecute;
+            if (parameter is T value)
+                execute(value);
         }
 
-        public bool CanExecute(object parameter) => _canExecute == null || _canExecute((T)parameter);
-
-        public void Execute(object parameter)
-        {
-            if (parameter != null)
-                _execute((T)parameter);
-        }
-
-        public void OnCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+        public void OnCanExecuteChanged()
+            => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
     }
-
 }

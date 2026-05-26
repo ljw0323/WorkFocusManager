@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
-using System.Drawing;
-using System.IO;
-using System.Text;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -12,21 +6,78 @@ using Utility;
 using WorkFocusManager.Configs;
 using WorkFocusManager.Models;
 using WorkFocusManager.Utility;
-using WpfAnimatedGif;
-using Newtonsoft.Json;
 
 namespace WorkFocusManager.ViewModels
 {
     public class MainWindowViewModel : ViewModelBase
     {
-        private readonly DispatcherTimer timer;
+        private const int ProcessRefreshIntervalSeconds = 5;
+        private const int BlockGraceSeconds = 10;
 
+        private readonly DispatcherTimer timer;
+        private readonly HashSet<int> countedKilledProcessIds = new();
+        private readonly HashSet<string> countedBlockedTargetKeys = new();
+        private readonly Dictionary<string, PendingBlockWarningModel> pendingBlockWarningsByKey = new();
+
+        private TimeSpan totalTime;
+        private TimeSpan remainingTime;
+        private bool isRunning;
+        private bool isPaused;
+        private bool isShowDetailView;
+        private string timerText = string.Empty;
+        private DateTime? selectedDate = DateTime.Now;
+        private int selectedHour;
+        private int selectedMinute;
+        private int selectedSecond;
+        private long timerTick;
+        private bool isEnforcingBlacklist;
+        private TimerProcessingLogModel? currentProcessingModel;
+
+        private ObservableCollection<TimerProcessingLogModel> timerProcessingLogModelColleciton = new();
+        private ObservableCollection<PendingBlockWarningModel> pendingBlockWarnings = new();
+        private UsageStatisticsModel todayUsageStatistics = new();
+        private UsageStatisticsModel monthlyUsageStatistics = new();
+        private List<ProcessCategoryGroupModel> processGroupModels = new();
+        private Dictionary<DateTime, TimeSpan> calendarHighlightedDurations = new();
+
+        private ICommand? controlTimercommand;
+        private ICommand? resetTimercommand;
+        private ICommand? showDetailViewcommand;
+        private ICommand? addBlacklistCommand;
+        private ICommand? removeBlacklistCommand;
+        private ICommand? addWhiteListCommand;
+        private ICommand? removeWhiteListCommand;
+        private ICommand? pauseTimerCommand;
+        private ICommand? saveConfigCommand;
+        private ICommand? setTimerPresetCommand;
+
+        public MainWindowViewModel()
+        {
+            totalTime = TimeSpan.FromMinutes(1);
+            RemainingTime = totalTime;
+
+            timer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(1)
+            };
+            timer.Tick += Timer_Tick;
+
+            Hours = new ObservableCollection<int>(Enumerable.Range(0, 24));
+            Minutes = new ObservableCollection<int>(Enumerable.Range(0, 60));
+            Seconds = new ObservableCollection<int>(Enumerable.Range(0, 60));
+
+            SelectedHour = 0;
+            SelectedMinute = 1;
+            SelectedSecond = 0;
+
+            UpdateSelectedTime();
+            EnsureConfigCollections();
+            LoadUsageRecords();
+            RefreshProcessGroups(ProcessStatusManager.GetProcessCategoryGroupList());
+        }
 
         public SystemConfig SystemConfig => SystemConfig.Instance;
 
-        private TimeSpan totalTime;
-
-        private TimeSpan remainingTime;
         public TimeSpan RemainingTime
         {
             get => remainingTime;
@@ -37,39 +88,44 @@ namespace WorkFocusManager.ViewModels
             }
         }
 
-        private bool isRunning;
         public bool IsRunning
         {
             get => isRunning;
             set => Set(ref isRunning, value);
         }
 
-        private bool isShowDetailView;
+        public bool IsPaused
+        {
+            get => isPaused;
+            set => Set(ref isPaused, value);
+        }
+
         public bool IsShowDetailView
         {
             get => isShowDetailView;
             set => Set(ref isShowDetailView, value);
         }
 
-        private string timerText;
         public string TimerText
         {
             get => timerText;
             set => Set(ref timerText, value);
         }
 
-        private DateTime? selectedDate;
         public DateTime? SelectedDate
         {
             get => selectedDate;
-            set => Set(ref selectedDate, value);
+            set
+            {
+                if (Set(ref selectedDate, value))
+                    LoadUsageRecords();
+            }
         }
 
-        public ObservableCollection<int> Hours { get; set; }
-        public ObservableCollection<int> Minutes { get; set; }
-        public ObservableCollection<int> Seconds { get; set; }
+        public ObservableCollection<int> Hours { get; }
+        public ObservableCollection<int> Minutes { get; }
+        public ObservableCollection<int> Seconds { get; }
 
-        private int selectedHour;
         public int SelectedHour
         {
             get => selectedHour;
@@ -80,7 +136,6 @@ namespace WorkFocusManager.ViewModels
             }
         }
 
-        private int selectedMinute;
         public int SelectedMinute
         {
             get => selectedMinute;
@@ -91,7 +146,6 @@ namespace WorkFocusManager.ViewModels
             }
         }
 
-        private int selectedSecond;
         public int SelectedSecond
         {
             get => selectedSecond;
@@ -102,228 +156,481 @@ namespace WorkFocusManager.ViewModels
             }
         }
 
-        private TimerProcessingLogModel CurrnetProcessingModel;
-
-        private List<TimerProcessingLogModel> timerProcessingLogModels;
-        public List<TimerProcessingLogModel> TimerProcessingLogModels
+        public ObservableCollection<TimerProcessingLogModel> TimerProcessingLogModelColleciton
         {
-            get => timerProcessingLogModels;
-            set => Set(ref timerProcessingLogModels, value);
+            get => timerProcessingLogModelColleciton;
+            set => Set(ref timerProcessingLogModelColleciton, value);
         }
 
-        private List<ProcessCategoryGroupModel> processGroupModels;
+        public ObservableCollection<PendingBlockWarningModel> PendingBlockWarnings
+        {
+            get => pendingBlockWarnings;
+            set => Set(ref pendingBlockWarnings, value);
+        }
+
         public List<ProcessCategoryGroupModel> ProcessGroupModels
         {
             get => processGroupModels;
             set => Set(ref processGroupModels, value);
         }
 
-        public MainWindowViewModel()
+        public UsageStatisticsModel TodayUsageStatistics
         {
-
-            totalTime = TimeSpan.FromMinutes(1);
-            RemainingTime = totalTime;
-
-            timer = new DispatcherTimer();
-            timer.Interval = TimeSpan.FromSeconds(1);
-            timer.Tick += Timer_Tick;
-
-            ProcessGroupModels = ProcessStatusManager.GetProcessCategoryGroupList();
-
-            Hours = new ObservableCollection<int>(
-                Enumerable.Range(0, 24));
-
-            Minutes = new ObservableCollection<int>(
-                Enumerable.Range(0, 60));
-
-            Seconds = new ObservableCollection<int>(
-                Enumerable.Range(0, 60));
-
-            SelectedHour = 0;
-            SelectedMinute = 1;
-            SelectedSecond = 0;
-
-            UpdateSelectedTime();
-
-            if (SystemConfig.ProcessGroupModelBlackList == null)
-                SystemConfig.ProcessGroupModelBlackList = new List<ProcessGroupModel>();
-            if (SystemConfig.ProcessModelBlackList == null)
-                SystemConfig.ProcessModelBlackList = new List<ProcessModel>();
-
-            TimerProcessingLogModels = new List<TimerProcessingLogModel>();
+            get => todayUsageStatistics;
+            set => Set(ref todayUsageStatistics, value);
         }
+
+        public UsageStatisticsModel MonthlyUsageStatistics
+        {
+            get => monthlyUsageStatistics;
+            set => Set(ref monthlyUsageStatistics, value);
+        }
+
+        public Dictionary<DateTime, TimeSpan> CalendarHighlightedDurations
+        {
+            get => calendarHighlightedDurations;
+            set => Set(ref calendarHighlightedDurations, value);
+        }
+
+        public ICommand ControlTimercommand => controlTimercommand ??= new RelayCommand(ControlTimerAction);
+        public ICommand ResetTimercommand => resetTimercommand ??= new RelayCommand(ResetTimerAction);
+        public ICommand ShowDetailViewcommand => showDetailViewcommand ??= new RelayCommand(ShowDetailViewAction);
+        public ICommand AddBlacklistCommand => addBlacklistCommand ??= new RelayCommand<object>(AddBlacklistAction);
+        public ICommand RemoveBlacklistCommand => removeBlacklistCommand ??= new RelayCommand<object>(RemoveBlacklistAction);
+        public ICommand AddWhiteListCommand => addWhiteListCommand ??= new RelayCommand<object>(AddWhiteListAction);
+        public ICommand RemoveWhiteListCommand => removeWhiteListCommand ??= new RelayCommand<object>(RemoveWhiteListAction);
+        public ICommand PauseTimerCommand => pauseTimerCommand ??= new RelayCommand(PauseTimerAction);
+        public ICommand SaveConfigCommand => saveConfigCommand ??= new RelayCommand(SaveConfigAction);
+        public ICommand SetTimerPresetCommand => setTimerPresetCommand ??= new RelayCommand<object>(SetTimerPresetAction);
 
         private void UpdateSelectedTime()
         {
-            totalTime = new TimeSpan(
-                SelectedHour,
-                SelectedMinute,
-                SelectedSecond);
+            totalTime = new TimeSpan(SelectedHour, SelectedMinute, SelectedSecond);
 
-            if (!IsRunning)
+            if (!IsRunning && !IsPaused)
                 RemainingTime = totalTime;
         }
 
-        private long timerTick;
-        private void Timer_Tick(object sender, EventArgs e)
+        private void Timer_Tick(object? sender, EventArgs e)
         {
             if (RemainingTime.TotalSeconds <= 0)
             {
                 RemainingTime = TimeSpan.Zero;
                 timer.Stop();
                 IsRunning = false;
+                IsPaused = false;
 
-                CurrnetProcessingModel.EndTime = DateTime.Now;
-                TimerProcessingLogModels.Add(CurrnetProcessingModel);
-                CurrnetProcessingModel = null;
-
+                CompleteCurrentProcessingLog();
                 return;
             }
 
             RemainingTime = RemainingTime.Subtract(TimeSpan.FromSeconds(1));
+            EnforceBlacklistAsync();
 
-            if (timerTick % 5 == 0)
-            {
-                Task.Run(() =>
-                {
-                    var processes = ProcessStatusManager.GetProcessCategoryGroupList();
-
-                    Application.Current.Dispatcher.Invoke(() =>
-                    {
-                        ProcessGroupModels = processes;
-                    });
-                });
-            }
+            if (timerTick % ProcessRefreshIntervalSeconds == 0)
+                RefreshProcessGroupsAsync();
 
             timerTick = timerTick > 1000000 ? 0 : timerTick + 1;
         }
 
-        private ICommand controlTimercommand;
-        public ICommand ControlTimercommand => controlTimercommand ?? (controlTimercommand = new RelayCommand(ControlTimerAction));
-
         private void ControlTimerAction()
         {
-            if (!IsRunning)
+            if (IsRunning)
             {
-                if (remainingTime.TotalSeconds <= 0)
-                    RemainingTime = totalTime;
-
-                timer.Start();
-                IsRunning = true;
-
-
-                var model = new TimerProcessingLogModel();
-                model.Title = SystemConfig.StatusText;
-                model.LoggingDate = DateTime.Now;
-                model.StartTime = DateTime.Now;
-
-                CurrnetProcessingModel = model;
+                PauseTimerAction();
+                return;
             }
-            else
+
+            if (remainingTime.TotalSeconds <= 0 || !IsPaused)
+                RemainingTime = totalTime;
+
+            timer.Start();
+            IsRunning = true;
+            IsPaused = false;
+
+            currentProcessingModel ??= new TimerProcessingLogModel
             {
-                timer.Stop();
-                IsRunning = false;
-            }
+                Title = SystemConfig.StatusText,
+                LoggingDate = DateTime.Now,
+                StartTime = DateTime.Now
+            };
+
+            EnforceBlacklistAsync();
         }
 
-        private ICommand resetTimercommand;
-        public ICommand ResetTimercommand => resetTimercommand ?? (resetTimercommand = new RelayCommand(ResetTimerAction));
+        private void PauseTimerAction()
+        {
+            if (!IsRunning)
+                return;
+
+            timer.Stop();
+            IsRunning = false;
+            IsPaused = true;
+        }
 
         private void ResetTimerAction()
         {
             timer.Stop();
             IsRunning = false;
+            IsPaused = false;
             RemainingTime = totalTime;
 
-            if(CurrnetProcessingModel != null)
-            {
-                CurrnetProcessingModel.EndTime = DateTime.Now;
-                TimerProcessingLogModels.Add(CurrnetProcessingModel);
-                CurrnetProcessingModel = null;
-            }
-            
-
+            CompleteCurrentProcessingLog();
             OnPropertyChanged(nameof(TimerText));
         }
-
-        private ICommand showDetailViewcommand;
-        public ICommand ShowDetailViewcommand => showDetailViewcommand ?? (showDetailViewcommand = new RelayCommand(ShowDetailViewAction));
 
         private void ShowDetailViewAction()
         {
             IsShowDetailView = !IsShowDetailView;
         }
 
-        private ICommand addBlacklistCommand;
-        public ICommand AddBlacklistCommand => addBlacklistCommand ?? (addBlacklistCommand = new RelayCommand<object>(AddBlacklistAction));
-
         private void AddBlacklistAction(object parameter)
         {
-            if (parameter is ProcessGroupModel processGroup)
+            var isChanged = false;
+
+            switch (parameter)
             {
-                // 그룹 우클릭
-                var processName = processGroup.ProcessName;
+                case ProcessGroupModel processGroup when !IsGroupBlacklisted(processGroup.ProcessName):
+                    SystemConfig.ProcessGroupModelBlackList.Add(processGroup);
+                    isChanged = true;
+                    break;
 
-                foreach (var process in processGroup.Items)
-                {
-                    process.IsBlocked = true;
-                }
-                processGroup.IsBlocked = true;
-
-                SystemConfig.ProcessGroupModelBlackList.Add(processGroup);
-
-                var originProcess = ProcessGroupModels.Select(x => x.Items.FirstOrDefault(x => x.ProcessName == processName));
-
-                foreach (var item in originProcess)
-                {
-                    if (item != null)
-                        item.IsBlocked = true;
-                }
+                case ProcessModel process when !IsProcessBlacklisted(process.Id):
+                    SystemConfig.ProcessModelBlackList.Add(process);
+                    isChanged = true;
+                    break;
             }
-            else if (parameter is ProcessModel process)
-            {
-                // 실제 프로세스 우클릭
-                var processName = process.ProcessName;
-                var pid = process.Id;
 
-                process.IsBlocked = true;
-                SystemConfig.ProcessModelBlackList.Add(process);
-            }
+            ApplyBlacklistState();
+
+            if (isChanged)
+                SystemConfig.Save();
         }
-
-        private ICommand removeBlacklistCommand;
-        public ICommand RemoveBlacklistCommand => removeBlacklistCommand ?? (removeBlacklistCommand = new RelayCommand<object>(RemoveBlacklistAction));
 
         private void RemoveBlacklistAction(object parameter)
         {
-            if (parameter is ProcessGroupModel processGroup)
+            switch (parameter)
             {
-                var processName = processGroup.ProcessName;
-                var existProcess = SystemConfig.ProcessGroupModelBlackList.Where(x => x.ProcessName != processName).ToList();
-                if (existProcess == null || existProcess.Count == 0)
-                    return;
+                case ProcessGroupModel processGroup:
+                    RemoveGroupBlacklist(processGroup.ProcessName);
+                    break;
 
-                var index = SystemConfig.ProcessGroupModelBlackList.IndexOf(existProcess.First());
-
-                if (index != -1)
-                    SystemConfig.ProcessGroupModelBlackList.RemoveAt(index);
+                case ProcessModel process:
+                    RemoveProcessBlacklist(process);
+                    break;
             }
-            else if (parameter is ProcessModel process)
+
+            ApplyBlacklistState();
+            SystemConfig.Save();
+        }
+
+        private void AddWhiteListAction(object parameter)
+        {
+            if (parameter is not ProcessModel process || IsProcessWhiteListed(process.ProcessName))
+                return;
+
+            process.IsWhiteListed = true;
+            SystemConfig.ProcessModelWhiteList.Add(process);
+            ApplyBlacklistState();
+            SystemConfig.Save();
+        }
+
+        private void RemoveWhiteListAction(object parameter)
+        {
+            if (parameter is not ProcessModel process)
+                return;
+
+            var existing = SystemConfig.ProcessModelWhiteList
+                .FirstOrDefault(x => x.ProcessName == process.ProcessName);
+
+            if (existing != null)
+                SystemConfig.ProcessModelWhiteList.Remove(existing);
+
+            ApplyBlacklistState();
+            SystemConfig.Save();
+        }
+
+        private void ApplyBlacklistState()
+        {
+            var blockedGroupNames = SystemConfig.ProcessGroupModelBlackList
+                .Select(x => x.ProcessName)
+                .ToHashSet();
+
+            var blockedProcessIds = SystemConfig.ProcessModelBlackList
+                .Select(x => x.Id)
+                .ToHashSet();
+
+            var whiteListProcessNames = SystemConfig.ProcessModelWhiteList
+                .Select(x => x.ProcessName)
+                .ToHashSet();
+
+            foreach (var category in ProcessGroupModels)
             {
-                var processName = process.ProcessName;
+                foreach (var processGroup in category.Items)
+                {
+                    var isGroupBlocked = blockedGroupNames.Contains(processGroup.ProcessName);
 
-                var existProcess = SystemConfig.ProcessModelBlackList.Where(x => x.ProcessName != processName).ToList();
-                if (existProcess == null || existProcess.Count == 0)
-                    return;
+                    processGroup.IsBlocked = isGroupBlocked;
 
-                var index = SystemConfig.ProcessModelBlackList.IndexOf(existProcess.First());
-                if (index != -1)
-                    SystemConfig.ProcessModelBlackList.RemoveAt(index);
+                    foreach (var process in processGroup.Items)
+                    {
+                        process.IsWhiteListed = whiteListProcessNames.Contains(process.ProcessName);
+                        process.IsBlocked = !process.IsWhiteListed && (isGroupBlocked || blockedProcessIds.Contains(process.Id));
+                    }
+                }
             }
         }
 
-        private ICommand saveConfigCommand;
-        public ICommand SaveConfigCommand => saveConfigCommand ?? (saveConfigCommand = new RelayCommand(SaveConfigAction));
+        private void CompleteCurrentProcessingLog()
+        {
+            if (currentProcessingModel == null)
+                return;
+
+            currentProcessingModel.EndTime = DateTime.Now;
+            TimerProcessingLogStore.Append(currentProcessingModel);
+
+            if (SelectedDate?.Date == currentProcessingModel.LoggingDate.Date)
+                LoadDailyLogs(currentProcessingModel.LoggingDate);
+
+            RefreshTodayStatistics();
+            RefreshMonthlyStatistics(currentProcessingModel.LoggingDate);
+            currentProcessingModel = null;
+            ClearBlockSessionState();
+        }
+
+        private void EnsureConfigCollections()
+        {
+            SystemConfig.ProcessGroupModelBlackList ??= new ObservableCollection<ProcessGroupModel>();
+            SystemConfig.ProcessModelBlackList ??= new ObservableCollection<ProcessModel>();
+            SystemConfig.ProcessModelWhiteList ??= new ObservableCollection<ProcessModel>();
+        }
+
+        private void LoadUsageRecords()
+        {
+            var targetDate = SelectedDate ?? DateTime.Now;
+
+            LoadDailyLogs(targetDate);
+            RefreshTodayStatistics();
+            RefreshMonthlyStatistics(targetDate);
+        }
+
+        private void LoadDailyLogs(DateTime date)
+        {
+            var logs = TimerProcessingLogStore.LoadByDate(date)
+                .OrderByDescending(x => x.StartTime)
+                .ToList();
+
+            TimerProcessingLogModelColleciton = new ObservableCollection<TimerProcessingLogModel>(logs);
+        }
+
+        private void RefreshMonthlyStatistics(DateTime date)
+        {
+            MonthlyUsageStatistics = TimerProcessingLogStore.LoadMonthlyStatistics(date);
+            CalendarHighlightedDurations = TimerProcessingLogStore.LoadMonthlyDurations(date);
+        }
+
+        private void RefreshTodayStatistics()
+        {
+            TodayUsageStatistics = TimerProcessingLogStore.LoadDailyStatistics(DateTime.Now);
+        }
+
+        private void RefreshProcessGroups(List<ProcessCategoryGroupModel> processGroups)
+        {
+            ProcessGroupModels = processGroups;
+            ApplyBlacklistState();
+        }
+
+        private void RefreshProcessGroupsAsync()
+        {
+            Task.Run(() =>
+            {
+                var processGroups = ProcessStatusManager.GetProcessCategoryGroupList();
+
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    RefreshProcessGroups(processGroups);
+                });
+            });
+        }
+
+        private void EnforceBlacklistAsync()
+        {
+            if (!IsRunning || isEnforcingBlacklist)
+                return;
+
+            var blockedGroupNames = SystemConfig.ProcessGroupModelBlackList.Select(x => x.ProcessName).ToHashSet();
+            var blockedProcessIds = SystemConfig.ProcessModelBlackList.Select(x => x.Id).ToHashSet();
+            var blockedProcessNames = SystemConfig.ProcessModelBlackList.Select(x => x.ProcessName).ToHashSet();
+            var whiteListProcessNames = SystemConfig.ProcessModelWhiteList.Select(x => x.ProcessName).ToHashSet();
+
+            if (blockedGroupNames.Count == 0 && blockedProcessIds.Count == 0 && blockedProcessNames.Count == 0)
+                return;
+
+            isEnforcingBlacklist = true;
+            var ignoredProcessIds = countedKilledProcessIds.ToHashSet();
+
+            Task.Run(() =>
+            {
+                return ProcessStatusManager.GetBlacklistedProcessTargets(
+                    blockedGroupNames,
+                    blockedProcessIds,
+                    blockedProcessNames,
+                    whiteListProcessNames,
+                    ignoredProcessIds);
+            })
+            .ContinueWith(task =>
+            {
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    isEnforcingBlacklist = false;
+
+                    if (!task.IsCompletedSuccessfully || currentProcessingModel == null)
+                        return;
+
+                    UpdatePendingBlockWarnings(task.Result);
+                });
+            });
+        }
+
+        private void UpdatePendingBlockWarnings(List<BlacklistProcessTarget> targets)
+        {
+            var now = DateTime.Now;
+            var currentKeys = targets.Select(x => x.TargetKey).ToHashSet();
+
+            foreach (var staleKey in pendingBlockWarningsByKey.Keys.Except(currentKeys).ToList())
+            {
+                pendingBlockWarningsByKey.Remove(staleKey);
+            }
+
+            foreach (var target in targets)
+            {
+                if (pendingBlockWarningsByKey.ContainsKey(target.TargetKey))
+                    continue;
+
+                pendingBlockWarningsByKey[target.TargetKey] = new PendingBlockWarningModel
+                {
+                    TargetKey = target.TargetKey,
+                    ProcessId = target.ProcessId,
+                    ProcessName = target.ProcessName,
+                    KillAt = now.AddSeconds(BlockGraceSeconds)
+                };
+            }
+
+            var dueKeys = pendingBlockWarningsByKey
+                .Where(x => x.Value.KillAt <= now)
+                .Select(x => x.Key)
+                .ToHashSet();
+
+            PendingBlockWarnings = new ObservableCollection<PendingBlockWarningModel>(
+                pendingBlockWarningsByKey.Values.OrderBy(x => x.KillAt));
+
+            if (dueKeys.Count > 0)
+                KillDueBlacklistedProcessesAsync(dueKeys);
+        }
+
+        private void KillDueBlacklistedProcessesAsync(HashSet<string> dueKeys)
+        {
+            var ignoredProcessIds = countedKilledProcessIds.ToHashSet();
+
+            Task.Run(() =>
+            {
+                var blockedGroupNames = SystemConfig.ProcessGroupModelBlackList.Select(x => x.ProcessName).ToHashSet();
+                var blockedProcessIds = SystemConfig.ProcessModelBlackList.Select(x => x.Id).ToHashSet();
+                var blockedProcessNames = SystemConfig.ProcessModelBlackList.Select(x => x.ProcessName).ToHashSet();
+                var whiteListProcessNames = SystemConfig.ProcessModelWhiteList.Select(x => x.ProcessName).ToHashSet();
+
+                return ProcessStatusManager.KillBlacklistedProcesses(
+                    blockedGroupNames,
+                    blockedProcessIds,
+                    blockedProcessNames,
+                    whiteListProcessNames,
+                    ignoredProcessIds,
+                    dueKeys);
+            })
+            .ContinueWith(task =>
+            {
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    if (!task.IsCompletedSuccessfully || currentProcessingModel == null)
+                        return;
+
+                    foreach (var processId in task.Result.KilledProcessIds)
+                    {
+                        countedKilledProcessIds.Add(processId);
+                    }
+
+                    foreach (var killedKey in task.Result.BlockedTargets.Keys)
+                    {
+                        pendingBlockWarningsByKey.Remove(killedKey);
+                    }
+
+                    var newBlockedLogs = task.Result.BlockedTargets
+                        .Where(x => countedBlockedTargetKeys.Add(x.Key))
+                        .Select(x => x.Value)
+                        .ToList();
+
+                    if (newBlockedLogs.Count > 0)
+                    {
+                        currentProcessingModel.BlockedProcesses.AddRange(newBlockedLogs);
+                        currentProcessingModel.BlockProcessCount = currentProcessingModel.BlockedProcesses.Count;
+                    }
+
+                    PendingBlockWarnings = new ObservableCollection<PendingBlockWarningModel>(
+                        pendingBlockWarningsByKey.Values.OrderBy(x => x.KillAt));
+                });
+            });
+        }
+
+        private void ClearBlockSessionState()
+        {
+            countedKilledProcessIds.Clear();
+            countedBlockedTargetKeys.Clear();
+            pendingBlockWarningsByKey.Clear();
+            PendingBlockWarnings.Clear();
+        }
+
+        private void SetTimerPresetAction(object parameter)
+        {
+            if (IsRunning || IsPaused || !int.TryParse(parameter?.ToString(), out var totalMinutes))
+                return;
+
+            SelectedHour = totalMinutes / 60;
+            SelectedMinute = totalMinutes % 60;
+            SelectedSecond = 0;
+            UpdateSelectedTime();
+        }
+
+        private bool IsGroupBlacklisted(string processName)
+            => SystemConfig.ProcessGroupModelBlackList.Any(x => x.ProcessName == processName);
+
+        private bool IsProcessBlacklisted(int processId)
+            => SystemConfig.ProcessModelBlackList.Any(x => x.Id == processId);
+
+        private bool IsProcessWhiteListed(string processName)
+            => SystemConfig.ProcessModelWhiteList.Any(x => x.ProcessName == processName);
+
+        private void RemoveGroupBlacklist(string processName)
+        {
+            var existingGroup = SystemConfig.ProcessGroupModelBlackList
+                .FirstOrDefault(x => x.ProcessName == processName);
+
+            if (existingGroup != null)
+                SystemConfig.ProcessGroupModelBlackList.Remove(existingGroup);
+        }
+
+        private void RemoveProcessBlacklist(ProcessModel process)
+        {
+            var existingProcess = SystemConfig.ProcessModelBlackList
+                .FirstOrDefault(x => x.Id == process.Id);
+
+            if (existingProcess != null)
+            {
+                SystemConfig.ProcessModelBlackList.Remove(existingProcess);
+                return;
+            }
+
+            RemoveGroupBlacklist(process.ProcessName);
+        }
 
         private void SaveConfigAction()
         {

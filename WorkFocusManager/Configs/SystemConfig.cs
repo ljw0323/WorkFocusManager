@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using Utility;
 using WorkFocusManager.Models;
@@ -41,18 +42,25 @@ namespace WorkFocusManager.Configs
             set => Set(ref name, value);
         }
 
-        private List<ProcessGroupModel> processGroupModelBlackList;
-        public List<ProcessGroupModel> ProcessGroupModelBlackList
+        private ObservableCollection<ProcessGroupModel> processGroupModelBlackList;
+        public ObservableCollection<ProcessGroupModel> ProcessGroupModelBlackList
         {
             get => processGroupModelBlackList;
             set => Set(ref processGroupModelBlackList, value);
         }
 
-        private List<ProcessModel> processModelBlackList;
-        public List<ProcessModel> ProcessModelBlackList
+        private ObservableCollection<ProcessModel> processModelBlackList;
+        private ObservableCollection<ProcessModel> processModelWhiteList;
+        public ObservableCollection<ProcessModel> ProcessModelBlackList
         {
             get => processModelBlackList;
             set => Set(ref processModelBlackList, value);
+        }
+
+        public ObservableCollection<ProcessModel> ProcessModelWhiteList
+        {
+            get => processModelWhiteList;
+            set => Set(ref processModelWhiteList, value);
         }
 
         public void Save()
@@ -80,8 +88,7 @@ namespace WorkFocusManager.Configs
 
                 var json = File.ReadAllText(ConfigPath);
 
-                var config =
-                    JsonConvert.DeserializeObject<SystemConfig>(json);
+                var config =JsonConvert.DeserializeObject<SystemConfig>(json);
 
                 return config ?? CreateDefault();
             }
@@ -99,8 +106,9 @@ namespace WorkFocusManager.Configs
             {
                 StatusText = string.Empty,
                 Name = string.Empty,
-                ProcessGroupModelBlackList = new List<ProcessGroupModel>(),
-                ProcessModelBlackList = new List<ProcessModel>()
+                ProcessGroupModelBlackList = new ObservableCollection<ProcessGroupModel>(),
+                ProcessModelBlackList = new ObservableCollection<ProcessModel>(),
+                ProcessModelWhiteList = new ObservableCollection<ProcessModel>()
             };
         }
     }

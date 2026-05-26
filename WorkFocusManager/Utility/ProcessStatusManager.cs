@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
-using System.Linq;
 using System.Windows.Interop;
 using System.Windows.Media.Imaging;
 using WorkFocusManager.Models;
@@ -12,11 +9,12 @@ namespace WorkFocusManager.Utility
 {
     public static class ProcessStatusManager
     {
+        private const string AppCategoryName = "\uC571";
+        private const string BackgroundCategoryName = "\uBC31\uADF8\uB77C\uC6B4\uB4DC \uD504\uB85C\uC138\uC2A4";
+
         public static List<ProcessCategoryGroupModel> GetProcessCategoryGroupList()
         {
-            var processModels = GetProcessList();
-
-            return processModels
+            return GetProcessList()
                 .GroupBy(x => x.CategoryName)
                 .Select(categoryGroup => new ProcessCategoryGroupModel
                 {
@@ -37,7 +35,7 @@ namespace WorkFocusManager.Utility
                         .OrderByDescending(x => x.TotalMemoryBytes)
                         .ToList()
                 })
-                .OrderBy(x => x.CategoryName == "앱" ? 0 : 1)
+                .OrderBy(x => x.CategoryName == AppCategoryName ? 0 : 1)
                 .ToList();
         }
 
@@ -47,28 +45,11 @@ namespace WorkFocusManager.Utility
 
             try
             {
-                var processList = Process.GetProcesses()
-                    .OrderBy(x => x.ProcessName)
-                    .ToList();
-
-                foreach (var process in processList)
+                foreach (var process in Process.GetProcesses().OrderBy(x => x.ProcessName))
                 {
                     try
                     {
-                        var isApp = process.MainWindowHandle != IntPtr.Zero;
-
-                        var processModel = new ProcessModel
-                        {
-                            Id = process.Id,
-                            ProcessName = process.ProcessName,
-                            ProcessIcon = GetProcessIcon(process),
-                            UsingMemoryBytes = GetWorkingSet(process),
-                            CategoryName = process.MainWindowHandle != IntPtr.Zero
-                            ? "앱"
-                            : "백그라운드 프로세스",
-                        };
-
-                        processModels.Add(processModel);
+                        processModels.Add(CreateProcessModel(process));
                     }
                     catch (Exception ex)
                     {
@@ -89,6 +70,136 @@ namespace WorkFocusManager.Utility
             return processModels;
         }
 
+        public static BlacklistKillResult KillBlacklistedProcesses(
+            ISet<string> blockedGroupNames,
+            ISet<int> blockedProcessIds,
+            ISet<string> blockedProcessNames,
+            ISet<string> whiteListProcessNames,
+            ISet<int> ignoredProcessIds,
+            ISet<string> allowedTargetKeys)
+        {
+            var currentProcessId = Environment.ProcessId;
+            var result = new BlacklistKillResult();
+
+            foreach (var process in Process.GetProcesses())
+            {
+                try
+                {
+                    if (process.Id == currentProcessId || ignoredProcessIds.Contains(process.Id) || whiteListProcessNames.Contains(process.ProcessName))
+                        continue;
+
+                    var targetKey = GetBlacklistTargetKey(
+                        process,
+                        blockedGroupNames,
+                        blockedProcessIds,
+                        blockedProcessNames);
+
+                    if (targetKey == null || !allowedTargetKeys.Contains(targetKey))
+                        continue;
+
+                    process.Kill(entireProcessTree: true);
+                    result.KilledProcessIds.Add(process.Id);
+                    result.BlockedTargets[targetKey] = new BlockedProcessLogModel
+                    {
+                        BlockedAt = DateTime.Now,
+                        ProcessId = process.Id,
+                        ProcessName = process.ProcessName,
+                        Reason = targetKey.StartsWith("group:")
+                            ? "\uADF8\uB8F9 \uCC28\uB2E8"
+                            : "\uD504\uB85C\uC138\uC2A4 \uCC28\uB2E8"
+                    };
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine(ex.Message);
+                }
+                finally
+                {
+                    process.Dispose();
+                }
+            }
+
+            return result;
+        }
+
+        public static List<BlacklistProcessTarget> GetBlacklistedProcessTargets(
+            ISet<string> blockedGroupNames,
+            ISet<int> blockedProcessIds,
+            ISet<string> blockedProcessNames,
+            ISet<string> whiteListProcessNames,
+            ISet<int> ignoredProcessIds)
+        {
+            var currentProcessId = Environment.ProcessId;
+            var result = new List<BlacklistProcessTarget>();
+
+            foreach (var process in Process.GetProcesses())
+            {
+                try
+                {
+                    if (process.Id == currentProcessId || ignoredProcessIds.Contains(process.Id) || whiteListProcessNames.Contains(process.ProcessName))
+                        continue;
+
+                    var targetKey = GetBlacklistTargetKey(
+                        process,
+                        blockedGroupNames,
+                        blockedProcessIds,
+                        blockedProcessNames);
+
+                    if (targetKey == null)
+                        continue;
+
+                    result.Add(new BlacklistProcessTarget
+                    {
+                        TargetKey = targetKey,
+                        ProcessId = process.Id,
+                        ProcessName = process.ProcessName
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine(ex.Message);
+                }
+                finally
+                {
+                    process.Dispose();
+                }
+            }
+
+            return result;
+        }
+
+        private static string? GetBlacklistTargetKey(
+            Process process,
+            ISet<string> blockedGroupNames,
+            ISet<int> blockedProcessIds,
+            ISet<string> blockedProcessNames)
+        {
+            if (blockedProcessIds.Contains(process.Id))
+                return $"pid:{process.Id}";
+
+            if (blockedGroupNames.Contains(process.ProcessName))
+                return $"group:{process.ProcessName}";
+
+            if (blockedProcessNames.Contains(process.ProcessName))
+                return $"process:{process.ProcessName}";
+
+            return null;
+        }
+
+        private static ProcessModel CreateProcessModel(Process process)
+        {
+            return new ProcessModel
+            {
+                Id = process.Id,
+                ProcessName = process.ProcessName,
+                ProcessIcon = GetProcessIcon(process),
+                UsingMemoryBytes = GetWorkingSet(process),
+                CategoryName = process.MainWindowHandle != IntPtr.Zero
+                    ? AppCategoryName
+                    : BackgroundCategoryName
+            };
+        }
+
         private static long GetWorkingSet(Process process)
         {
             try
@@ -101,37 +212,46 @@ namespace WorkFocusManager.Utility
             }
         }
 
-        public static BitmapSource GetProcessIcon(Process process)
+        private static BitmapSource? GetProcessIcon(Process process)
         {
             try
             {
                 var path = process.MainModule?.FileName;
 
-                if (string.IsNullOrWhiteSpace(path))
+                if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
                     return null;
 
-                if (!File.Exists(path))
+                using var icon = Icon.ExtractAssociatedIcon(path);
+
+                if (icon == null)
                     return null;
 
-                using (Icon icon = Icon.ExtractAssociatedIcon(path))
-                {
-                    if (icon == null)
-                        return null;
+                var bitmapSource = Imaging.CreateBitmapSourceFromHIcon(
+                    icon.Handle,
+                    System.Windows.Int32Rect.Empty,
+                    BitmapSizeOptions.FromWidthAndHeight(24, 24));
 
-                    var bitmapSource = Imaging.CreateBitmapSourceFromHIcon(
-                        icon.Handle,
-                        System.Windows.Int32Rect.Empty,
-                        BitmapSizeOptions.FromWidthAndHeight(24, 24));
+                bitmapSource.Freeze();
 
-                    bitmapSource.Freeze();
-
-                    return bitmapSource;
-                }
+                return bitmapSource;
             }
             catch
             {
                 return null;
             }
         }
+    }
+
+    public class BlacklistKillResult
+    {
+        public HashSet<int> KilledProcessIds { get; } = new();
+        public Dictionary<string, BlockedProcessLogModel> BlockedTargets { get; } = new();
+    }
+
+    public class BlacklistProcessTarget
+    {
+        public string TargetKey { get; set; } = string.Empty;
+        public int ProcessId { get; set; }
+        public string ProcessName { get; set; } = string.Empty;
     }
 }

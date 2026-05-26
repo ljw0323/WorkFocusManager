@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Runtime.CompilerServices;
 
@@ -6,14 +6,12 @@ namespace Utility
 {
     public class ViewModelBase : INotifyPropertyChanged
     {
-        #region ViewModelBase
-
         [NotMapped]
         public bool IsNotifyPropertyChanged { get; set; } = true;
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        protected bool Set<T>(ref T storage, T value, [CallerMemberName] string propertyName = null)
+        protected bool Set<T>(ref T storage, T value, [CallerMemberName] string? propertyName = null)
         {
             if (Equals(storage, value))
                 return false;
@@ -24,7 +22,7 @@ namespace Utility
             return true;
         }
 
-        protected bool Set<T>(ref T storage, T value, Action<T> changedAction, [CallerMemberName] string propertyName = null)
+        protected bool Set<T>(ref T storage, T value, Action<T> changedAction, [CallerMemberName] string? propertyName = null)
         {
             if (Equals(storage, value))
                 return false;
@@ -36,14 +34,12 @@ namespace Utility
             return true;
         }
 
-        protected void OnPropertyChanged(string propertyName)
+        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
-            if (!IsNotifyPropertyChanged || PropertyChanged == null)
+            if (!IsNotifyPropertyChanged || propertyName == null)
                 return;
 
-            PropertyChanged.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
-
-        #endregion
     }
 }
