@@ -7,9 +7,9 @@ namespace WorkFocusManager.Converters
     public class BlackListBackgroundConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-            => value is true ? Brushes.Pink : Brushes.Transparent;
+            => value is true ? System.Windows.Media.Brushes.Pink : System.Windows.Media.Brushes.Transparent;
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-            => Binding.DoNothing;
+            => System.Windows.Data.Binding.DoNothing;
     }
 }

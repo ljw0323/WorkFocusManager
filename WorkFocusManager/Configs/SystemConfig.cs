@@ -67,6 +67,27 @@ namespace WorkFocusManager.Configs
             _ => "/Resources/CatImage.gif"
         };
 
+        private int todayGoalMinutes = 240;
+        public int TodayGoalMinutes
+        {
+            get => todayGoalMinutes;
+            set => Set(ref todayGoalMinutes, Math.Max(0, value));
+        }
+
+        private int breakMinutes = 5;
+        public int BreakMinutes
+        {
+            get => breakMinutes;
+            set => Set(ref breakMinutes, Math.Max(0, value));
+        }
+
+        private string blockMode = "Normal";
+        public string BlockMode
+        {
+            get => blockMode;
+            set => Set(ref blockMode, string.IsNullOrWhiteSpace(value) ? "Normal" : value);
+        }
+
         private ObservableCollection<ProcessGroupModel> processGroupModelBlackList;
         public ObservableCollection<ProcessGroupModel> ProcessGroupModelBlackList
         {
@@ -144,6 +165,9 @@ namespace WorkFocusManager.Configs
                 StatusText = string.Empty,
                 Name = string.Empty,
                 CharacterKind = "Cat",
+                TodayGoalMinutes = 240,
+                BreakMinutes = 5,
+                BlockMode = "Normal",
                 ProcessGroupModelBlackList = new ObservableCollection<ProcessGroupModel>(),
                 ProcessModelBlackList = new ObservableCollection<ProcessModel>(),
                 ProcessModelWhiteList = new ObservableCollection<ProcessModel>()
@@ -166,6 +190,9 @@ namespace WorkFocusManager.Configs
                 StatusText = StatusText,
                 Name = Name,
                 CharacterKind = CharacterKind,
+                TodayGoalMinutes = TodayGoalMinutes,
+                BreakMinutes = BreakMinutes,
+                BlockMode = BlockMode,
                 ProcessGroupModelBlackList = ProcessGroupModelBlackList?
                     .Where(x => !string.IsNullOrWhiteSpace(x.ProcessName))
                     .Select(x => new PersistedProcessGroup
@@ -207,6 +234,9 @@ namespace WorkFocusManager.Configs
                 StatusText = persistedConfig.StatusText ?? string.Empty,
                 Name = persistedConfig.Name ?? string.Empty,
                 CharacterKind = string.IsNullOrWhiteSpace(persistedConfig.CharacterKind) ? "Cat" : persistedConfig.CharacterKind,
+                TodayGoalMinutes = persistedConfig.TodayGoalMinutes,
+                BreakMinutes = persistedConfig.BreakMinutes,
+                BlockMode = string.IsNullOrWhiteSpace(persistedConfig.BlockMode) ? "Normal" : persistedConfig.BlockMode,
                 ProcessGroupModelBlackList = new ObservableCollection<ProcessGroupModel>(
                     persistedConfig.ProcessGroupModelBlackList.Select(x => new ProcessGroupModel
                     {
@@ -234,6 +264,9 @@ namespace WorkFocusManager.Configs
             public string StatusText { get; set; } = string.Empty;
             public string Name { get; set; } = string.Empty;
             public string CharacterKind { get; set; } = "Cat";
+            public int TodayGoalMinutes { get; set; } = 240;
+            public int BreakMinutes { get; set; } = 5;
+            public string BlockMode { get; set; } = "Normal";
             public List<PersistedProcessGroup> ProcessGroupModelBlackList { get; set; } = new();
             public List<PersistedProcess> ProcessModelBlackList { get; set; } = new();
             public List<PersistedProcess> ProcessModelWhiteList { get; set; } = new();

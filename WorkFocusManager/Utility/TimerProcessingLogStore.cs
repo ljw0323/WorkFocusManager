@@ -47,16 +47,20 @@ namespace WorkFocusManager.Utility
 
         public static UsageStatisticsModel LoadMonthlyStatistics(DateTime month)
         {
+            return CreateStatistics(LoadByMonth(month));
+        }
+
+        public static List<TimerProcessingLogModel> LoadByMonth(DateTime month)
+        {
             if (!Directory.Exists(LogDirectory))
-                return new UsageStatisticsModel();
+                return new List<TimerProcessingLogModel>();
 
             var filePattern = $"{month:yyyy-MM}-*.json";
-            var logs = Directory
+
+            return Directory
                 .EnumerateFiles(LogDirectory, filePattern)
                 .SelectMany(LoadByPath)
                 .ToList();
-
-            return CreateStatistics(logs);
         }
 
         public static Dictionary<DateTime, TimeSpan> LoadMonthlyDurations(DateTime month)
@@ -66,9 +70,7 @@ namespace WorkFocusManager.Utility
 
             var filePattern = $"{month:yyyy-MM}-*.json";
 
-            return Directory
-                .EnumerateFiles(LogDirectory, filePattern)
-                .SelectMany(LoadByPath)
+            return LoadByMonth(month)
                 .GroupBy(x => x.LoggingDate.Date)
                 .ToDictionary(
                     x => x.Key,

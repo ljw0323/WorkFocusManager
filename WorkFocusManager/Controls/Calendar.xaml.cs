@@ -8,7 +8,7 @@ namespace WorkFocusManager.Controls
     /// <summary>
     /// Calendar.xaml에 대한 상호 작용 논리
     /// </summary>
-    public partial class Calendar : UserControl
+    public partial class Calendar : System.Windows.Controls.UserControl
     {
         public Calendar()
         {
@@ -72,7 +72,7 @@ namespace WorkFocusManager.Controls
                     }
 
                     var ratio = Math.Clamp(duration.Ticks / (double)maxTicks, 0.25, 1);
-                    button.Background = new SolidColorBrush(Color.FromArgb(
+                    button.Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(
                         (byte)(70 + 100 * ratio),
                         107,
                         227,

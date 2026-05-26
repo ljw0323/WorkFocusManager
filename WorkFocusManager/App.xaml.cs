@@ -8,18 +8,11 @@ namespace WorkFocusManager
     /// <summary>
     /// Interaction logic for App.xaml
     /// </summary>
-    public partial class App : Application
+    public partial class App : System.Windows.Application
     {
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
-
-            var config = SystemConfig.Load();
-
-            SystemConfig.Instance.StatusText = config.StatusText;
-            SystemConfig.Instance.Name = config.Name;
-            SystemConfig.Instance.ProcessGroupModelBlackList = config.ProcessGroupModelBlackList;
-            SystemConfig.Instance.ProcessModelBlackList = config.ProcessModelBlackList;
         }
 
         protected override void OnExit(ExitEventArgs e)

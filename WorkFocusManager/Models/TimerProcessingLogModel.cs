@@ -125,6 +125,44 @@ namespace WorkFocusManager.Models
             $"{(int)LongestDuration.TotalHours}\uC2DC\uAC04 {LongestDuration.Minutes}\uBD84 {LongestDuration.Seconds}\uCD08";
     }
 
+    public class MonthlyReportModel : ViewModelBase
+    {
+        private string bestDayText = "-";
+        private string bestWeekdayText = "-";
+        private string topBlockedProcessText = "-";
+        private int focusStreakDays;
+
+        public string BestDayText
+        {
+            get => bestDayText;
+            set => Set(ref bestDayText, value);
+        }
+
+        public string BestWeekdayText
+        {
+            get => bestWeekdayText;
+            set => Set(ref bestWeekdayText, value);
+        }
+
+        public string TopBlockedProcessText
+        {
+            get => topBlockedProcessText;
+            set => Set(ref topBlockedProcessText, value);
+        }
+
+        public int FocusStreakDays
+        {
+            get => focusStreakDays;
+            set
+            {
+                Set(ref focusStreakDays, value);
+                OnPropertyChanged(nameof(FocusStreakText));
+            }
+        }
+
+        public string FocusStreakText => $"{FocusStreakDays}\uC77C";
+    }
+
     public class PendingBlockWarningModel : ViewModelBase
     {
         private string processName = string.Empty;

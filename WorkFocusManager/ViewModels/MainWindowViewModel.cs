@@ -23,8 +23,10 @@ namespace WorkFocusManager.ViewModels
         private TimeSpan remainingTime;
         private bool isRunning;
         private bool isPaused;
+        private bool isBreakMode;
         private bool isShowDetailView;
         private string timerText = string.Empty;
+        private string timerModeText = "\uC9D1\uC911";
         private DateTime? selectedDate = DateTime.Now;
         private int selectedHour;
         private int selectedMinute;
@@ -39,6 +41,7 @@ namespace WorkFocusManager.ViewModels
         private ObservableCollection<PendingBlockWarningModel> pendingBlockWarnings = new();
         private UsageStatisticsModel todayUsageStatistics = new();
         private UsageStatisticsModel monthlyUsageStatistics = new();
+        private MonthlyReportModel monthlyReport = new();
         private List<ProcessCategoryGroupModel> processGroupModels = new();
         private Dictionary<DateTime, TimeSpan> calendarHighlightedDurations = new();
 
@@ -102,6 +105,12 @@ namespace WorkFocusManager.ViewModels
             set => Set(ref isPaused, value);
         }
 
+        public bool IsBreakMode
+        {
+            get => isBreakMode;
+            set => Set(ref isBreakMode, value);
+        }
+
         public bool IsShowDetailView
         {
             get => isShowDetailView;
@@ -112,6 +121,12 @@ namespace WorkFocusManager.ViewModels
         {
             get => timerText;
             set => Set(ref timerText, value);
+        }
+
+        public string TimerModeText
+        {
+            get => timerModeText;
+            set => Set(ref timerModeText, value);
         }
 
         public DateTime? SelectedDate
@@ -188,6 +203,33 @@ namespace WorkFocusManager.ViewModels
             set => Set(ref monthlyUsageStatistics, value);
         }
 
+        public MonthlyReportModel MonthlyReport
+        {
+            get => monthlyReport;
+            set => Set(ref monthlyReport, value);
+        }
+
+        public string TodayGoalText
+        {
+            get
+            {
+                var goal = TimeSpan.FromMinutes(SystemConfig.TodayGoalMinutes);
+                return $"{TodayUsageStatistics.TotalDurationText} / {(int)goal.TotalHours}\uC2DC\uAC04 {goal.Minutes}\uBD84";
+            }
+        }
+
+        public double TodayGoalProgress
+        {
+            get
+            {
+                if (SystemConfig.TodayGoalMinutes <= 0)
+                    return 0;
+
+                var progress = TodayUsageStatistics.TotalDuration.TotalMinutes / SystemConfig.TodayGoalMinutes;
+                return Math.Max(0, Math.Min(100, progress * 100));
+            }
+        }
+
         public Dictionary<DateTime, TimeSpan> CalendarHighlightedDurations
         {
             get => calendarHighlightedDurations;
@@ -204,6 +246,16 @@ namespace WorkFocusManager.ViewModels
         public ICommand PauseTimerCommand => pauseTimerCommand ??= new RelayCommand(PauseTimerAction);
         public ICommand SaveConfigCommand => saveConfigCommand ??= new RelayCommand(SaveConfigAction);
         public ICommand SetTimerPresetCommand => setTimerPresetCommand ??= new RelayCommand<object>(SetTimerPresetAction);
+
+        public void ToggleTimer()
+        {
+            ControlTimerAction();
+        }
+
+        public void ResetTimer()
+        {
+            ResetTimerAction();
+        }
 
         private void UpdateSelectedTime()
         {
@@ -222,12 +274,20 @@ namespace WorkFocusManager.ViewModels
                 IsRunning = false;
                 IsPaused = false;
 
+                if (IsBreakMode)
+                {
+                    FinishBreakTimer();
+                    return;
+                }
+
                 CompleteCurrentProcessingLog();
+                StartBreakTimerIfNeeded();
                 return;
             }
 
             RemainingTime = RemainingTime.Subtract(TimeSpan.FromSeconds(1));
-            EnforceBlacklistAsync();
+            if (!IsBreakMode)
+                EnforceBlacklistAsync();
 
             if (IsShowDetailView && timerTick % ProcessRefreshIntervalSeconds == 0)
                 RefreshProcessGroupsAsync();
@@ -250,14 +310,18 @@ namespace WorkFocusManager.ViewModels
             IsRunning = true;
             IsPaused = false;
 
-            currentProcessingModel ??= new TimerProcessingLogModel
+            if (!IsBreakMode)
             {
-                Title = SystemConfig.StatusText,
-                LoggingDate = DateTime.Now,
-                StartTime = DateTime.Now
-            };
+                TimerModeText = "\uC9D1\uC911";
+                currentProcessingModel ??= new TimerProcessingLogModel
+                {
+                    Title = SystemConfig.StatusText,
+                    LoggingDate = DateTime.Now,
+                    StartTime = DateTime.Now
+                };
 
-            EnforceBlacklistAsync();
+                EnforceBlacklistAsync();
+            }
         }
 
         private void PauseTimerAction()
@@ -275,6 +339,8 @@ namespace WorkFocusManager.ViewModels
             timer.Stop();
             IsRunning = false;
             IsPaused = false;
+            IsBreakMode = false;
+            TimerModeText = "\uC9D1\uC911";
             RemainingTime = totalTime;
 
             CompleteCurrentProcessingLog();
@@ -438,11 +504,14 @@ namespace WorkFocusManager.ViewModels
         {
             MonthlyUsageStatistics = TimerProcessingLogStore.LoadMonthlyStatistics(date);
             CalendarHighlightedDurations = TimerProcessingLogStore.LoadMonthlyDurations(date);
+            MonthlyReport = CreateMonthlyReport(date);
         }
 
         private void RefreshTodayStatistics()
         {
             TodayUsageStatistics = TimerProcessingLogStore.LoadDailyStatistics(DateTime.Now);
+            OnPropertyChanged(nameof(TodayGoalText));
+            OnPropertyChanged(nameof(TodayGoalProgress));
         }
 
         private void RefreshProcessGroups(List<ProcessCategoryGroupModel> processGroups)
@@ -466,7 +535,7 @@ namespace WorkFocusManager.ViewModels
             {
                 var processGroups = ProcessStatusManager.GetProcessCategoryGroupList();
 
-                Application.Current.Dispatcher.Invoke(() =>
+                System.Windows.Application.Current.Dispatcher.Invoke(() =>
                 {
                     RefreshProcessGroups(processGroups);
                     isRefreshingProcessGroups = false;
@@ -476,12 +545,109 @@ namespace WorkFocusManager.ViewModels
             {
                 if (!task.IsCompletedSuccessfully)
                 {
-                    Application.Current.Dispatcher.Invoke(() =>
+                    System.Windows.Application.Current.Dispatcher.Invoke(() =>
                     {
                         isRefreshingProcessGroups = false;
                     });
                 }
             });
+        }
+
+        private void StartBreakTimerIfNeeded()
+        {
+            if (SystemConfig.BreakMinutes <= 0)
+                return;
+
+            IsBreakMode = true;
+            TimerModeText = "\uD734\uC2DD";
+            RemainingTime = TimeSpan.FromMinutes(SystemConfig.BreakMinutes);
+            timer.Start();
+            IsRunning = true;
+            IsPaused = false;
+        }
+
+        private void FinishBreakTimer()
+        {
+            IsBreakMode = false;
+            TimerModeText = "\uC9D1\uC911";
+            RemainingTime = totalTime;
+        }
+
+        private MonthlyReportModel CreateMonthlyReport(DateTime date)
+        {
+            var logs = TimerProcessingLogStore.LoadByMonth(date);
+            var report = new MonthlyReportModel();
+
+            if (logs.Count == 0)
+                return report;
+
+            var dailyDurations = logs
+                .GroupBy(x => x.LoggingDate.Date)
+                .Select(x => new
+                {
+                    Date = x.Key,
+                    Duration = TimeSpan.FromTicks(x.Sum(log => log.Duration.Ticks))
+                })
+                .OrderByDescending(x => x.Duration)
+                .ToList();
+
+            var bestDay = dailyDurations.First();
+            report.BestDayText = $"{bestDay.Date:MM/dd} {(int)bestDay.Duration.TotalHours}\uC2DC\uAC04 {bestDay.Duration.Minutes}\uBD84";
+
+            var weekdays = logs
+                .GroupBy(x => x.LoggingDate.DayOfWeek)
+                .Select(x => new
+                {
+                    DayOfWeek = x.Key,
+                    Duration = TimeSpan.FromTicks(x.Sum(log => log.Duration.Ticks))
+                })
+                .OrderByDescending(x => x.Duration)
+                .First();
+
+            report.BestWeekdayText = $"{ToKoreanWeekday(weekdays.DayOfWeek)} {(int)weekdays.Duration.TotalHours}\uC2DC\uAC04 {weekdays.Duration.Minutes}\uBD84";
+
+            var topBlockedProcess = logs
+                .SelectMany(x => x.BlockedProcesses)
+                .GroupBy(x => x.ProcessName)
+                .Select(x => new { ProcessName = x.Key, Count = x.Count() })
+                .OrderByDescending(x => x.Count)
+                .FirstOrDefault();
+
+            report.TopBlockedProcessText = topBlockedProcess == null
+                ? "-"
+                : $"{topBlockedProcess.ProcessName} {topBlockedProcess.Count}\uD68C";
+
+            report.FocusStreakDays = CalculateFocusStreak(dailyDurations.Select(x => x.Date).ToHashSet(), date);
+
+            return report;
+        }
+
+        private static int CalculateFocusStreak(HashSet<DateTime> focusedDates, DateTime baseDate)
+        {
+            var cursor = baseDate.Date;
+            var streak = 0;
+
+            while (focusedDates.Contains(cursor))
+            {
+                streak++;
+                cursor = cursor.AddDays(-1);
+            }
+
+            return streak;
+        }
+
+        private static string ToKoreanWeekday(DayOfWeek dayOfWeek)
+        {
+            return dayOfWeek switch
+            {
+                DayOfWeek.Monday => "\uC6D4",
+                DayOfWeek.Tuesday => "\uD654",
+                DayOfWeek.Wednesday => "\uC218",
+                DayOfWeek.Thursday => "\uBAA9",
+                DayOfWeek.Friday => "\uAE08",
+                DayOfWeek.Saturday => "\uD1A0",
+                _ => "\uC77C"
+            };
         }
 
         private void EnforceBlacklistAsync()
@@ -497,6 +663,20 @@ namespace WorkFocusManager.ViewModels
             if (blockedGroupNames.Count == 0 && blockedProcessIds.Count == 0 && blockedProcessNames.Count == 0)
                 return;
 
+            if (SystemConfig.BlockMode == "Warning")
+            {
+                PendingBlockWarnings = new ObservableCollection<PendingBlockWarningModel>(
+                    blockedGroupNames
+                        .Concat(blockedProcessNames)
+                        .Distinct()
+                        .Select(x => new PendingBlockWarningModel
+                        {
+                            ProcessName = x,
+                            KillAt = DateTime.Now.AddSeconds(5)
+                        }));
+                return;
+            }
+
             isEnforcingBlacklist = true;
             var ignoredProcessIds = countedKilledProcessIds.ToHashSet();
 
@@ -511,7 +691,7 @@ namespace WorkFocusManager.ViewModels
             })
             .ContinueWith(task =>
             {
-                Application.Current.Dispatcher.Invoke(() =>
+                System.Windows.Application.Current.Dispatcher.Invoke(() =>
                 {
                     isEnforcingBlacklist = false;
 
@@ -543,7 +723,7 @@ namespace WorkFocusManager.ViewModels
                     TargetKey = target.TargetKey,
                     ProcessId = target.ProcessId,
                     ProcessName = target.ProcessName,
-                    KillAt = now.AddSeconds(BlockGraceSeconds)
+                    KillAt = now.AddSeconds(SystemConfig.BlockMode == "Strict" ? 0 : BlockGraceSeconds)
                 };
             }
 
@@ -580,7 +760,7 @@ namespace WorkFocusManager.ViewModels
             })
             .ContinueWith(task =>
             {
-                Application.Current.Dispatcher.Invoke(() =>
+                System.Windows.Application.Current.Dispatcher.Invoke(() =>
                 {
                     if (!task.IsCompletedSuccessfully || currentProcessingModel == null)
                         return;
@@ -666,6 +846,8 @@ namespace WorkFocusManager.ViewModels
         private void SaveConfigAction()
         {
             SystemConfig.Save();
+            RefreshTodayStatistics();
         }
     }
 }
+

@@ -55,6 +55,13 @@
                FontSize="18"
                HorizontalAlignment="Center"/>
 
+            <TextBlock Text="{Binding TimerModeText}"
+                       FontWeight="SemiBold"
+                       Foreground="#E8B7B2"
+                       FontSize="13"
+                       HorizontalAlignment="Center"
+                       Margin="0,4,0,0"/>
+
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                 <!-- 타이머 / Start - Stop 버튼 -->
@@ -499,10 +506,53 @@
                                                         Height="32"/>
                                             </StackPanel>
                                         </StackPanel>
-                                    </Grid>
-                                </StackPanel>
-                            </DockPanel>
-                        </Border>
+                                     </Grid>
+
+                                    <WrapPanel Margin="0,20,0,0">
+                                        <StackPanel Width="150"
+                                                    Margin="0,0,14,12">
+                                            <TextBlock Text="오늘 목표"
+                                                       Style="{StaticResource SettingsLabelStyle}"/>
+                                            <TextBox Text="{Binding SystemConfig.TodayGoalMinutes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                     Style="{StaticResource SettingsTextBoxStyle}"
+                                                     Margin="0,8,0,0"/>
+                                            <TextBlock Text="분 단위"
+                                                       Style="{StaticResource SettingsHintStyle}"/>
+                                        </StackPanel>
+
+                                        <StackPanel Width="150"
+                                                    Margin="0,0,14,12">
+                                            <TextBlock Text="휴식 시간"
+                                                       Style="{StaticResource SettingsLabelStyle}"/>
+                                            <TextBox Text="{Binding SystemConfig.BreakMinutes, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                     Style="{StaticResource SettingsTextBoxStyle}"
+                                                     Margin="0,8,0,0"/>
+                                            <TextBlock Text="0이면 자동 휴식 없음"
+                                                       Style="{StaticResource SettingsHintStyle}"/>
+                                        </StackPanel>
+
+                                        <StackPanel Width="180"
+                                                    Margin="0,0,14,12">
+                                            <TextBlock Text="차단 강도"
+                                                       Style="{StaticResource SettingsLabelStyle}"/>
+                                            <ComboBox SelectedValue="{Binding SystemConfig.BlockMode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                      SelectedValuePath="Tag"
+                                                      Width="160"
+                                                      HorizontalAlignment="Left"
+                                                      Margin="0,8,0,0"
+                                                      Style="{StaticResource SettingsComboBoxStyle}"
+                                                      ItemContainerStyle="{StaticResource SettingsComboBoxItemStyle}">
+                                                <ComboBoxItem Tag="Warning" Content="약함"/>
+                                                <ComboBoxItem Tag="Normal" Content="보통"/>
+                                                <ComboBoxItem Tag="Strict" Content="강함"/>
+                                            </ComboBox>
+                                            <TextBlock Text="약함은 경고만 표시"
+                                                       Style="{StaticResource SettingsHintStyle}"/>
+                                        </StackPanel>
+                                    </WrapPanel>
+                                 </StackPanel>
+                             </DockPanel>
+                         </Border>
                     </Grid>
                 </TabItem>
                 <TabItem Header="사용 기록">
@@ -659,6 +709,91 @@
                                     </StackPanel>
                                 </Border>
                             </StackPanel>
+
+                            <Border Background="#F7F2FF"
+                                    CornerRadius="12"
+                                    Padding="14,10"
+                                    Margin="0,10,0,0">
+                                <StackPanel>
+                                    <DockPanel>
+                                        <TextBlock Text="오늘 목표"
+                                                   FontSize="12"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="#6C55B8"/>
+                                        <TextBlock Text="{Binding TodayGoalText}"
+                                                   DockPanel.Dock="Right"
+                                                   FontSize="12"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="#333"
+                                                   HorizontalAlignment="Right"/>
+                                    </DockPanel>
+                                    <ProgressBar Value="{Binding TodayGoalProgress, Mode=OneWay}"
+                                                 Maximum="100"
+                                                 Height="8"
+                                                 Margin="0,8,0,0"
+                                                 Foreground="#7C5CFA"
+                                                 Background="#E6DDFD"/>
+                                </StackPanel>
+                            </Border>
+
+                            <WrapPanel Margin="0,10,0,0">
+                                <Border Background="#F6F6F6"
+                                        CornerRadius="12"
+                                        Padding="14,8"
+                                        Margin="0,0,8,8">
+                                    <StackPanel>
+                                        <TextBlock Text="최고 집중일"
+                                                   FontSize="11"
+                                                   Foreground="#777"/>
+                                        <TextBlock Text="{Binding MonthlyReport.BestDayText}"
+                                                   FontSize="14"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="#222"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Background="#F6F6F6"
+                                        CornerRadius="12"
+                                        Padding="14,8"
+                                        Margin="0,0,8,8">
+                                    <StackPanel>
+                                        <TextBlock Text="강한 요일"
+                                                   FontSize="11"
+                                                   Foreground="#777"/>
+                                        <TextBlock Text="{Binding MonthlyReport.BestWeekdayText}"
+                                                   FontSize="14"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="#222"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Background="#FFECEC"
+                                        CornerRadius="12"
+                                        Padding="14,8"
+                                        Margin="0,0,8,8">
+                                    <StackPanel>
+                                        <TextBlock Text="많이 차단"
+                                                   FontSize="11"
+                                                   Foreground="#B44"/>
+                                        <TextBlock Text="{Binding MonthlyReport.TopBlockedProcessText}"
+                                                   FontSize="14"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="#D95353"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Background="#EEF8F1"
+                                        CornerRadius="12"
+                                        Padding="14,8"
+                                        Margin="0,0,8,8">
+                                    <StackPanel>
+                                        <TextBlock Text="연속 집중"
+                                                   FontSize="11"
+                                                   Foreground="#587A61"/>
+                                        <TextBlock Text="{Binding MonthlyReport.FocusStreakText}"
+                                                   FontSize="14"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="#274A31"/>
+                                    </StackPanel>
+                                </Border>
+                            </WrapPanel>
 
                         </StackPanel>
                         <ItemsControl ItemsSource="{Binding TimerProcessingLogModelColleciton}">

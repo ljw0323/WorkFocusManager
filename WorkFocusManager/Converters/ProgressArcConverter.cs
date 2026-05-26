@@ -16,13 +16,13 @@ namespace WorkFocusManager.Converters
                 angle = d;
 
             double radius = 250;
-            Point center = new Point(300, 300);
+            System.Windows.Point center = new System.Windows.Point(300, 300);
 
             double startAngle = -90;
             double endAngle = startAngle + angle;
 
-            Point startPoint = PointOnCircle(radius, startAngle, center);
-            Point endPoint = PointOnCircle(radius, endAngle, center);
+            System.Windows.Point startPoint = PointOnCircle(radius, startAngle, center);
+            System.Windows.Point endPoint = PointOnCircle(radius, endAngle, center);
 
             bool isLargeArc = angle > 180;
 
@@ -36,7 +36,7 @@ namespace WorkFocusManager.Converters
             figure.Segments.Add(new ArcSegment
             {
                 Point = endPoint,
-                Size = new Size(radius, radius),
+                Size = new System.Windows.Size(radius, radius),
                 SweepDirection = SweepDirection.Clockwise,
                 IsLargeArc = isLargeArc
             });
@@ -47,14 +47,14 @@ namespace WorkFocusManager.Converters
             return geometry;
         }
 
-        private Point PointOnCircle(double radius, double angleDegrees, Point center)
+        private System.Windows.Point PointOnCircle(double radius, double angleDegrees, System.Windows.Point center)
         {
             double angleRadians = angleDegrees * Math.PI / 180.0;
 
             double x = center.X + radius * Math.Cos(angleRadians);
             double y = center.Y + radius * Math.Sin(angleRadians);
 
-            return new Point(x, y);
+            return new System.Windows.Point(x, y);
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
