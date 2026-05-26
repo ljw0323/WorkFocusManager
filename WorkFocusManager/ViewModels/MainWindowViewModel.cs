@@ -300,7 +300,7 @@ namespace WorkFocusManager.ViewModels
                     isChanged = true;
                     break;
 
-                case ProcessModel process when !IsProcessBlacklisted(process.Id):
+                case ProcessModel process when !IsProcessBlacklisted(process.ProcessName):
                     SystemConfig.ProcessModelBlackList.Add(process);
                     isChanged = true;
                     break;
@@ -363,6 +363,11 @@ namespace WorkFocusManager.ViewModels
 
             var blockedProcessIds = SystemConfig.ProcessModelBlackList
                 .Select(x => x.Id)
+                .Where(x => x > 0)
+                .ToHashSet();
+
+            var blockedProcessNames = SystemConfig.ProcessModelBlackList
+                .Select(x => x.ProcessName)
                 .ToHashSet();
 
             var whiteListProcessNames = SystemConfig.ProcessModelWhiteList
@@ -380,7 +385,8 @@ namespace WorkFocusManager.ViewModels
                     foreach (var process in processGroup.Items)
                     {
                         process.IsWhiteListed = whiteListProcessNames.Contains(process.ProcessName);
-                        process.IsBlocked = !process.IsWhiteListed && (isGroupBlocked || blockedProcessIds.Contains(process.Id));
+                        process.IsBlocked = !process.IsWhiteListed
+                            && (isGroupBlocked || blockedProcessIds.Contains(process.Id) || blockedProcessNames.Contains(process.ProcessName));
                     }
                 }
             }
@@ -484,7 +490,7 @@ namespace WorkFocusManager.ViewModels
                 return;
 
             var blockedGroupNames = SystemConfig.ProcessGroupModelBlackList.Select(x => x.ProcessName).ToHashSet();
-            var blockedProcessIds = SystemConfig.ProcessModelBlackList.Select(x => x.Id).ToHashSet();
+            var blockedProcessIds = SystemConfig.ProcessModelBlackList.Select(x => x.Id).Where(x => x > 0).ToHashSet();
             var blockedProcessNames = SystemConfig.ProcessModelBlackList.Select(x => x.ProcessName).ToHashSet();
             var whiteListProcessNames = SystemConfig.ProcessModelWhiteList.Select(x => x.ProcessName).ToHashSet();
 
@@ -560,7 +566,7 @@ namespace WorkFocusManager.ViewModels
             Task.Run(() =>
             {
                 var blockedGroupNames = SystemConfig.ProcessGroupModelBlackList.Select(x => x.ProcessName).ToHashSet();
-                var blockedProcessIds = SystemConfig.ProcessModelBlackList.Select(x => x.Id).ToHashSet();
+                var blockedProcessIds = SystemConfig.ProcessModelBlackList.Select(x => x.Id).Where(x => x > 0).ToHashSet();
                 var blockedProcessNames = SystemConfig.ProcessModelBlackList.Select(x => x.ProcessName).ToHashSet();
                 var whiteListProcessNames = SystemConfig.ProcessModelWhiteList.Select(x => x.ProcessName).ToHashSet();
 
@@ -628,8 +634,8 @@ namespace WorkFocusManager.ViewModels
         private bool IsGroupBlacklisted(string processName)
             => SystemConfig.ProcessGroupModelBlackList.Any(x => x.ProcessName == processName);
 
-        private bool IsProcessBlacklisted(int processId)
-            => SystemConfig.ProcessModelBlackList.Any(x => x.Id == processId);
+        private bool IsProcessBlacklisted(string processName)
+            => SystemConfig.ProcessModelBlackList.Any(x => x.ProcessName == processName);
 
         private bool IsProcessWhiteListed(string processName)
             => SystemConfig.ProcessModelWhiteList.Any(x => x.ProcessName == processName);
@@ -646,7 +652,7 @@ namespace WorkFocusManager.ViewModels
         private void RemoveProcessBlacklist(ProcessModel process)
         {
             var existingProcess = SystemConfig.ProcessModelBlackList
-                .FirstOrDefault(x => x.Id == process.Id);
+                .FirstOrDefault(x => x.ProcessName == process.ProcessName);
 
             if (existingProcess != null)
             {

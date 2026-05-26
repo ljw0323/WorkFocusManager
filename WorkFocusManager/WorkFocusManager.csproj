@@ -12,7 +12,9 @@
   <ItemGroup>
     <None Remove="Resources\AppIcon.ico" />
     <None Remove="Resources\background.jpg" />
+    <None Remove="Resources\BearImage.gif" />
     <None Remove="Resources\CatImage.gif" />
+    <None Remove="Resources\DogImage.gif" />
   </ItemGroup>
 
   <ItemGroup>
@@ -28,6 +30,12 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
     <Resource Include="Resources\CatImage.gif">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\DogImage.gif">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Resources\BearImage.gif">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Resource>
   </ItemGroup>
